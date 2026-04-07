@@ -1,4 +1,4 @@
-# react-native-indoor-beacon
+# react-native-beacon
 
 iBeacon library for React Native built on New Architecture (TurboModules + JSI).
 Real background scanning on Android via foreground service — what other libraries promised but never delivered.
@@ -15,7 +15,7 @@ Real background scanning on Android via foreground service — what other librar
 ## Installation
 
 ```sh
-npm install react-native-indoor-beacon
+npm install react-native-beacon
 ```
 
 ### Android permissions
@@ -34,10 +34,10 @@ Request them at runtime with [react-native-permissions](https://github.com/zoont
 ## Usage
 
 ```ts
-import IndoorBeacon from 'react-native-indoor-beacon';
+import Beacon from 'react-native-beacon';
 
 // Configure once on app start
-IndoorBeacon.configure({
+Beacon.configure({
   scanPeriod: 1100,
   betweenScanPeriod: 0,
   foregroundService: true,   // required for real background scanning
@@ -45,16 +45,16 @@ IndoorBeacon.configure({
 });
 
 // Check permissions (does not request them)
-const granted = await IndoorBeacon.checkPermissions();
+const granted = await Beacon.checkPermissions();
 
 // Start ranging
-await IndoorBeacon.startRanging({
+await Beacon.startRanging({
   identifier: 'my-region',
   uuid: 'FDA50693-A4E2-4FB1-AFCF-C6EB07647825',
 });
 
 // Listen for beacons
-const sub = IndoorBeacon.onBeaconsRanged((event) => {
+const sub = Beacon.onBeaconsRanged((event) => {
   event.beacons.forEach((beacon) => {
     console.log(beacon.uuid, beacon.major, beacon.minor);
     console.log(beacon.distance);  // meters
@@ -64,7 +64,7 @@ const sub = IndoorBeacon.onBeaconsRanged((event) => {
 
 // Cleanup
 sub.remove();
-await IndoorBeacon.stopRanging({ identifier: 'my-region', uuid: '...' });
+await Beacon.stopRanging({ identifier: 'my-region', uuid: '...' });
 ```
 
 ## API
@@ -74,7 +74,7 @@ await IndoorBeacon.stopRanging({ identifier: 'my-region', uuid: '...' });
 Call once before starting any scan. All fields are optional.
 
 ```ts
-IndoorBeacon.configure({
+Beacon.configure({
   scanPeriod?: number,          // active scan duration in ms (default: 1100)
   betweenScanPeriod?: number,   // rest between scans in ms (default: 0)
   foregroundService?: boolean,  // enable real background scanning (default: false)
@@ -101,7 +101,7 @@ Detects region entry/exit. Battery efficient — use to wake up ranging when the
 ### `onBeaconsRanged(callback)`
 
 ```ts
-const sub = IndoorBeacon.onBeaconsRanged((event) => {
+const sub = Beacon.onBeaconsRanged((event) => {
   // event.region  — the active region
   // event.beacons — array of detected beacons
 });
@@ -112,7 +112,7 @@ sub.remove(); // unsubscribe
 ### `onRegionStateChanged(callback)`
 
 ```ts
-const sub = IndoorBeacon.onRegionStateChanged((event) => {
+const sub = Beacon.onRegionStateChanged((event) => {
   // event.region — the region
   // event.state  — 'inside' | 'outside'
 });

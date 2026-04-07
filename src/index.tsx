@@ -1,10 +1,10 @@
 import { NativeEventEmitter } from 'react-native';
-import NativeIndoorBeacon from './NativeIndoorBeacon';
+import NativeBeacon from './NativeBeacon';
 import type {
   BeaconRegion,
   BeaconScanConfig,
   KalmanConfig,
-} from './NativeIndoorBeacon';
+} from './NativeBeacon';
 
 export type { BeaconRegion, BeaconScanConfig, KalmanConfig };
 
@@ -30,31 +30,31 @@ export interface RegionStateChangedEvent {
   state: 'inside' | 'outside';
 }
 
-const emitter = new NativeEventEmitter(NativeIndoorBeacon);
+const emitter = new NativeEventEmitter(NativeBeacon);
 
-const IndoorBeacon = {
+const Beacon = {
   checkPermissions(): Promise<boolean> {
-    return NativeIndoorBeacon.checkPermissions();
+    return NativeBeacon.checkPermissions();
   },
 
   configure(config: BeaconScanConfig): void {
-    NativeIndoorBeacon.configure(config);
+    NativeBeacon.configure(config);
   },
 
   startRanging(region: BeaconRegion): Promise<void> {
-    return NativeIndoorBeacon.startRanging(region);
+    return NativeBeacon.startRanging(region);
   },
 
   stopRanging(region: BeaconRegion): Promise<void> {
-    return NativeIndoorBeacon.stopRanging(region);
+    return NativeBeacon.stopRanging(region);
   },
 
   startMonitoring(region: BeaconRegion): Promise<void> {
-    return NativeIndoorBeacon.startMonitoring(region);
+    return NativeBeacon.startMonitoring(region);
   },
 
   stopMonitoring(region: BeaconRegion): Promise<void> {
-    return NativeIndoorBeacon.stopMonitoring(region);
+    return NativeBeacon.stopMonitoring(region);
   },
 
   onBeaconsRanged(callback: (event: BeaconsRangedEvent) => void) {
@@ -72,4 +72,4 @@ const IndoorBeacon = {
   },
 };
 
-export default IndoorBeacon;
+export default Beacon;

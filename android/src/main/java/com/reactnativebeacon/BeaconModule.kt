@@ -1,4 +1,4 @@
-package com.indoorbeacon
+package com.reactnativebeacon
 
 import android.Manifest
 import android.app.Notification
@@ -27,8 +27,8 @@ data class KalmanState(
   var errorCovariance: Double,
 )
 
-class IndoorBeaconModule(reactContext: ReactApplicationContext) :
-  NativeIndoorBeaconSpec(reactContext) {
+class BeaconModule(reactContext: ReactApplicationContext) :
+  NativeBeaconSpec(reactContext) {
 
   private var beaconManager: BeaconManager? = null
   private var rangeNotifier: RangeNotifier? = null
@@ -104,13 +104,13 @@ class IndoorBeaconModule(reactContext: ReactApplicationContext) :
 
   // Foreground service: enables real background scanning (process is not killed)
   private fun enableForegroundService() {
-    val channelId = "indoor-beacon-channel"
+    val channelId = "beacon-channel"
     val context = reactApplicationContext
 
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
       val channel = NotificationChannel(
         channelId,
-        "Indoor Beacon Scanning",
+        "Beacon Scanning",
         NotificationManager.IMPORTANCE_LOW
       ).apply {
         description = "Active while scanning for beacons in background"
@@ -120,7 +120,7 @@ class IndoorBeaconModule(reactContext: ReactApplicationContext) :
     }
 
     val notification = Notification.Builder(context, channelId)
-      .setContentTitle("Indoor Beacon")
+      .setContentTitle("Beacon")
       .setContentText("Scanning for beacons...")
       .setSmallIcon(android.R.drawable.ic_menu_compass)
       .build()
@@ -202,7 +202,6 @@ class IndoorBeaconModule(reactContext: ReactApplicationContext) :
 
   // --- Helpers ---
 
-
   private fun readableMapToRegion(map: ReadableMap): Region {
     val identifier = map.getString("identifier")
       ?: throw IllegalArgumentException("identifier is required")
@@ -241,7 +240,7 @@ class IndoorBeaconModule(reactContext: ReactApplicationContext) :
         beacon.distance
       }
 
-      android.util.Log.d("IndoorBeacon", "MAC: ${beacon.bluetoothAddress} UUID: ${beacon.id1}")
+      android.util.Log.d("Beacon", "MAC: ${beacon.bluetoothAddress} UUID: ${beacon.id1}")
 
       beaconArray.pushMap(Arguments.createMap().apply {
         putString("uuid", beacon.id1?.toString() ?: "")
@@ -284,7 +283,7 @@ class IndoorBeaconModule(reactContext: ReactApplicationContext) :
   }
 
   companion object {
-    const val NAME = NativeIndoorBeaconSpec.NAME
+    const val NAME = NativeBeaconSpec.NAME
     private const val FOREGROUND_SERVICE_ID = 456
   }
 }

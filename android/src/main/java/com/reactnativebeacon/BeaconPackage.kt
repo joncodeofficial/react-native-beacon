@@ -1,4 +1,4 @@
-package com.indoorbeacon
+package com.reactnativebeacon
 
 import com.facebook.react.BaseReactPackage
 import com.facebook.react.bridge.NativeModule
@@ -7,10 +7,10 @@ import com.facebook.react.module.model.ReactModuleInfo
 import com.facebook.react.module.model.ReactModuleInfoProvider
 import java.util.HashMap
 
-class IndoorBeaconPackage : BaseReactPackage() {
+class BeaconPackage : BaseReactPackage() {
   override fun getModule(name: String, reactContext: ReactApplicationContext): NativeModule? {
-    return if (name == IndoorBeaconModule.NAME) {
-      IndoorBeaconModule(reactContext)
+    return if (name == BeaconModule.NAME) {
+      BeaconModule(reactContext)
     } else {
       null
     }
@@ -18,9 +18,9 @@ class IndoorBeaconPackage : BaseReactPackage() {
 
   override fun getReactModuleInfoProvider() = ReactModuleInfoProvider {
     mapOf(
-      IndoorBeaconModule.NAME to ReactModuleInfo(
-        name = IndoorBeaconModule.NAME,
-        className = IndoorBeaconModule.NAME,
+      BeaconModule.NAME to ReactModuleInfo(
+        name = BeaconModule.NAME,
+        className = BeaconModule.NAME,
         canOverrideExistingModule = false,
         needsEagerInit = false,
         isCxxModule = false,
