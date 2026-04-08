@@ -1,16 +1,18 @@
 # react-native-beacon
 
-iBeacon library for React Native built on New Architecture (TurboModules + JSI).
+iBeacon / AltBeacon library for React Native built on New Architecture (TurboModules + JSI).
 Real background scanning on Android via foreground service — what other libraries promised but never delivered.
+
+> **Platform support:** Android fully supported. iOS in development.
 
 ## Features
 
 - New Architecture (TurboModules + JSI) — no legacy bridge
 - Real background scanning on Android via foreground service
+- iBeacon + AltBeacon support (~85% of the beacon market)
 - Kalman filter for stable distance readings (optional)
 - Configurable scan intervals
 - Does not request permissions — respects your app's UX flow
-- AltBeacon 2.21.2 (Android), CoreLocation (iOS)
 
 ## Installation
 
@@ -38,7 +40,6 @@ import Beacon from 'react-native-beacon';
 
 // Configure once on app start
 Beacon.configure({
-  scanPeriod: 1100,
   betweenScanPeriod: 0,
   foregroundService: true,   // required for real background scanning
   kalmanFilter: { enabled: true },
@@ -57,8 +58,10 @@ await Beacon.startRanging({
 const sub = Beacon.onBeaconsRanged((event) => {
   event.beacons.forEach((beacon) => {
     console.log(beacon.uuid, beacon.major, beacon.minor);
-    console.log(beacon.distance);  // meters
-    console.log(beacon.rssi);      // dBm
+    console.log(beacon.distance);   // meters
+    console.log(beacon.rssi);       // dBm
+    /** @warning May be randomized on Android 10+ */
+    console.log(beacon.macAddress);
   });
 });
 
@@ -75,7 +78,7 @@ Call once before starting any scan. All fields are optional.
 
 ```ts
 Beacon.configure({
-  scanPeriod?: number,          // active scan duration in ms (default: 1100)
+  scanPeriod?: number,          // active scan duration in ms (default: 5000)
   betweenScanPeriod?: number,   // rest between scans in ms (default: 0)
   foregroundService?: boolean,  // enable real background scanning (default: false)
   kalmanFilter?: {
