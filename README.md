@@ -78,8 +78,8 @@ Call once before starting any scan. All fields are optional.
 
 ```ts
 Beacon.configure({
-  scanPeriod?: number,          // active scan duration in ms (default: 5000)
-  betweenScanPeriod?: number,   // rest between scans in ms (default: 0)
+  scanPeriod?: number,          // how long the BLE radio actively scans, in ms (default: 5000)
+  betweenScanPeriod?: number,   // how long the BLE radio rests between scans, in ms (default: 0)
   foregroundService?: boolean,  // enable real background scanning (default: false)
   kalmanFilter?: {
     enabled: boolean,
@@ -88,6 +88,24 @@ Beacon.configure({
   },
 });
 ```
+
+**`scanPeriod` vs `betweenScanPeriod`**
+
+`scanPeriod` is how long the BLE radio is on and detecting. `betweenScanPeriod` is how long it rests before the next scan. Beacons are reported once at the end of each active period.
+
+```
+|←── scanPeriod ──→|←── betweenScanPeriod ──→|←── scanPeriod ──→|
+      radio ON              radio OFF                radio ON
+```
+
+`betweenScanPeriod: 0` means continuous scanning. Adding a rest period saves battery — `scanPeriod: 5000, betweenScanPeriod: 3000` and `scanPeriod: 8000, betweenScanPeriod: 0` both update every ~8s, but the first uses less power because the radio is off for 3s each cycle.
+
+| Use case | scanPeriod | betweenScanPeriod |
+|---|---|---|
+| Real-time positioning | 1100 | 0 |
+| Standard indoor navigation | 5000 | 0 |
+| Background zone detection | 5000 | 10000 |
+| Battery-sensitive background | 2000 | 30000 |
 
 ### `checkPermissions(): Promise<boolean>`
 
