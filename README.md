@@ -22,16 +22,26 @@ npm install react-native-beacon-kit
 
 ### Android permissions
 
-Add to your `AndroidManifest.xml`:
+All required permissions are automatically merged into your app's `AndroidManifest.xml` via autolinking — no manual changes needed for React Native CLI or Expo bare workflow.
 
-```xml
-<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-<uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
-<uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
-<uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+**Expo managed workflow** — declare permissions explicitly in `app.json`:
+
+```json
+{
+  "expo": {
+    "android": {
+      "permissions": [
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.BLUETOOTH_SCAN",
+        "android.permission.BLUETOOTH_CONNECT"
+      ]
+    }
+  }
+}
 ```
 
-Request them at runtime with [react-native-permissions](https://github.com/zoontek/react-native-permissions) before calling any scanning method.
+Permissions are declared but not requested by the library — use [react-native-permissions](https://github.com/zoontek/react-native-permissions) to request them at runtime before calling any scanning method.
 
 ## Usage
 
