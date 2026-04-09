@@ -11019,9 +11019,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"react-native-beacon@workspace:.":
+"react-native-beacon-kit@workspace:.":
   version: 0.0.0-use.local
-  resolution: "react-native-beacon@workspace:."
+  resolution: "react-native-beacon-kit@workspace:."
   dependencies:
     "@commitlint/config-conventional": "npm:^20.5.0"
     "@eslint/compat": "npm:^2.0.3"
