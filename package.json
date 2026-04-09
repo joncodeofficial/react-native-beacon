@@ -1,7 +1,7 @@
 {
   "name": "react-native-beacon-kit",
   "version": "0.1.2",
-  "description": "description",
+  "description": "iBeacon & AltBeacon for React Native — New Architecture (TurboModules + JSI) with real background scanning.",
   "main": "./lib/module/index.js",
   "types": "./lib/typescript/src/index.d.ts",
   "exports": {
@@ -44,8 +44,23 @@
   },
   "keywords": [
     "react-native",
+    "beacon",
+    "ibeacon",
+    "altbeacon",
+    "ble",
+    "bluetooth",
+    "bluetooth beacon",
+    "react-native-beacon",
+    "react-native-beacons",
+    "react native beacon",
+    "background scanning",
+    "turbo modules",
+    "new architecture",
+    "indoor positioning",
+    "proximity",
     "ios",
-    "android"
+    "android",
+    "expo"
   ],
   "repository": {
     "type": "git",
