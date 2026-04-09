@@ -1,4 +1,4 @@
-# react-native-beacon
+# react-native-beacon-kit
 
 iBeacon / AltBeacon library for React Native built on New Architecture (TurboModules + JSI).
 Real background scanning on Android via foreground service — what other libraries promised but never delivered.
@@ -17,7 +17,7 @@ Real background scanning on Android via foreground service — what other librar
 ## Installation
 
 ```sh
-npm install react-native-beacon
+npm install react-native-beacon-kit
 ```
 
 ### Android permissions
@@ -36,7 +36,7 @@ Request them at runtime with [react-native-permissions](https://github.com/zoont
 ## Usage
 
 ```ts
-import Beacon from 'react-native-beacon';
+import Beacon from 'react-native-beacon-kit';
 
 // Configure once on app start
 Beacon.configure({
