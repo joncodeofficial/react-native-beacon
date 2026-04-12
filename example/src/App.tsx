@@ -60,7 +60,7 @@ export default function App() {
       kalmanFilter: { enabled: true },
       // Enable aggressive background mode for MIUI/HyperOS (Xiaomi test device).
       // Adds watchdog, wake lock, and forced LOW_LATENCY scan mode.
-      aggressiveBackground: true,
+      aggressiveBackground: false,
     });
 
     requestPermissions().then(async () => {
