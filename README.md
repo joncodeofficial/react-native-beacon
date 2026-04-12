@@ -141,6 +141,7 @@ Beacon.configure({
     q?: number,   // process noise — how much you trust movement (default: 0.008)
     r?: number,   // measurement noise — how much you trust RSSI (default: 0.1)
   },
+  aggressiveBackground?: boolean, // enable aggressive OEM mode (default: false) — see below
 });
 ```
 
@@ -332,6 +333,29 @@ After `openAutostartSettings()` the user needs to:
 - Go to **Settings > Apps > [App] > Battery** and select **No restrictions**
 
 There is no way to grant these permissions programmatically — the user must do it manually. Guide them with a dialog before calling `openAutostartSettings()` so they know what to look for.
+
+## Aggressive background mode
+
+Some OEM devices (Xiaomi/HyperOS, some Samsung and Huawei models) suspend BLE scanning ~20s after the screen turns off even when a foreground service is running. Enable `aggressiveBackground` to fight this:
+
+```ts
+Beacon.configure({
+  foregroundService: true,
+  aggressiveBackground: true,
+});
+```
+
+This enables three additional mechanisms:
+
+| Mechanism | What it does |
+|---|---|
+| **Scan watchdog** | Restarts all active ranging regions every 20s, resetting the OEM scan-suspend timer before it fires |
+| **PARTIAL_WAKE_LOCK** | Keeps the CPU awake so BLE scan callbacks fire reliably with the screen off |
+| **Forced LOW_LATENCY** | Sets `SCAN_MODE_LOW_LATENCY` permanently — prevents MIUI from downgrading to LOW_POWER, which it suspends more aggressively |
+
+**Default is `false`.** Only enable if you've confirmed that background scanning stops without it on your target device. These measures increase battery consumption.
+
+> **Note:** `aggressiveBackground` does not replace `requestIgnoreBatteryOptimizations()` or `openAutostartSettings()` — those are still needed on Xiaomi. Aggressive mode fights the BLE driver throttle; battery optimization and autostart are separate permission layers.
 
 ## Platform notes
 
