@@ -120,6 +120,17 @@
         reject(@"RANGING_ERROR", @"identifier and uuid are required", nil);
         return;
     }
+
+    // Guard: ranging and monitoring on the same region interfere with each other.
+    if (_monitoringRegions[identifier]) {
+        reject(@"RANGING_MONITORING_CONFLICT",
+               [NSString stringWithFormat:
+                @"Cannot call startRanging on region '%@' — startMonitoring is already active on the same region. "
+                @"They interfere with each other. Call stopMonitoring first, or use a different region identifier.",
+                identifier],
+               nil);
+        return;
+    }
     NSUUID *uuid = [[NSUUID alloc] initWithUUIDString:uuidString];
     if (!uuid) {
         reject(@"RANGING_ERROR", ([NSString stringWithFormat:@"Invalid UUID: %@", uuidString]), nil);
@@ -179,6 +190,17 @@
         reject(@"MONITORING_ERROR", @"identifier and uuid are required", nil);
         return;
     }
+
+    // Guard: same conflict — stop ranging first before monitoring the same region.
+    if (_rangingConstraints[identifier]) {
+        reject(@"RANGING_MONITORING_CONFLICT",
+               [NSString stringWithFormat:
+                @"Cannot call startMonitoring on region '%@' — startRanging is already active on the same region. "
+                @"They interfere with each other. Call stopRanging first, or use a different region identifier.",
+                identifier],
+               nil);
+        return;
+    }
     NSUUID *uuid = [[NSUUID alloc] initWithUUIDString:uuidString];
     if (!uuid) {
         reject(@"MONITORING_ERROR", ([NSString stringWithFormat:@"Invalid UUID: %@", uuidString]), nil);
@@ -232,6 +254,44 @@
     } else {
         resolve(nil);
     }
+}
+
+// ---------------------------------------------------------------------------
+// getRangedRegions / getMonitoredRegions
+// ---------------------------------------------------------------------------
+
+- (void)getRangedRegions:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject {
+    NSMutableArray *result = [NSMutableArray arrayWithCapacity:_rangingConstraints.count];
+    [_rangingConstraints enumerateKeysAndObjectsUsingBlock:^(NSString *identifier,
+                                                              CLBeaconIdentityConstraint *constraint,
+                                                              BOOL *stop) {
+        NSMutableDictionary *regionMap = [@{
+            @"identifier": identifier,
+            @"uuid": constraint.UUID.UUIDString.lowercaseString,
+        } mutableCopy];
+        if (constraint.major) regionMap[@"major"] = constraint.major;
+        if (constraint.minor) regionMap[@"minor"] = constraint.minor;
+        [result addObject:regionMap];
+    }];
+    resolve(result);
+}
+
+- (void)getMonitoredRegions:(RCTPromiseResolveBlock)resolve
+                     reject:(RCTPromiseRejectBlock)reject {
+    NSMutableArray *result = [NSMutableArray arrayWithCapacity:_monitoringRegions.count];
+    [_monitoringRegions enumerateKeysAndObjectsUsingBlock:^(NSString *identifier,
+                                                             CLBeaconRegion *region,
+                                                             BOOL *stop) {
+        NSMutableDictionary *regionMap = [@{
+            @"identifier": identifier,
+            @"uuid": region.UUID.UUIDString.lowercaseString,
+        } mutableCopy];
+        if (region.major) regionMap[@"major"] = region.major;
+        if (region.minor) regionMap[@"minor"] = region.minor;
+        [result addObject:regionMap];
+    }];
+    resolve(result);
 }
 
 // ---------------------------------------------------------------------------

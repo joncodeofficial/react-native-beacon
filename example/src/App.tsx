@@ -1,15 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Button,
-  FlatList,
   PermissionsAndroid,
   Platform,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
-import Beacon, { type Beacon as BeaconType } from 'react-native-beacon-kit';
+import Beacon from 'react-native-beacon-kit';
+import MonitorThenRangeExample from './MonitorThenRangeExample';
+import TestScreen from './TestScreen';
 
+// Permissions + configure live here — once, at the app level.
+// configure() is global library state, not component state. Moving it here
+// prevents a second configure() call every time the user switches tabs.
 async function requestPermissions() {
   if (Platform.OS !== 'android') return;
 
@@ -20,16 +23,12 @@ async function requestPermissions() {
     permissions.push(PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN);
     permissions.push(PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT);
   }
-
   if (Platform.Version >= 33) {
     permissions.push(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
   }
 
   const results = await PermissionsAndroid.requestMultiple(permissions);
 
-  // ACCESS_BACKGROUND_LOCATION must be requested separately — Android rejects it
-  // when bundled with other permissions in the same requestMultiple() call.
-  // Required on Android 10+ for BLE scanning to continue with the screen off.
   if (
     Platform.Version >= 29 &&
     results[PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION] === 'granted'
@@ -40,181 +39,69 @@ async function requestPermissions() {
   }
 }
 
-const TEST_REGION = {
-  identifier: 'test-region',
-  uuid: 'a1b23c45-d67e-9fab-de12-0034567890ab',
-};
-
 export default function App() {
-  const [hasPermissions, setHasPermissions] = useState<boolean | null>(null);
-  const [beacons, setBeacons] = useState<BeaconType[]>([]);
-  const [regionState, setRegionState] = useState<string>('unknown');
-  const [isRanging, setIsRanging] = useState(false);
+  const initRef = useRef(false);
+  const [screen, setScreen] = useState<'test' | 'monitor'>('test');
 
   useEffect(() => {
-    Beacon.configure({
-      scanPeriod: 1100, // screen on: update every ~1s
-      backgroundScanPeriod: 10000, // screen off: safe from Android BLE throttle
-      betweenScanPeriod: 0,
-      foregroundService: true,
-      kalmanFilter: { enabled: true },
-      // Enable aggressive background mode for MIUI/HyperOS (Xiaomi test device).
-      // Adds watchdog, wake lock, and forced LOW_LATENCY scan mode.
-      aggressiveBackground: false,
-    });
+    if (initRef.current) return;
+    initRef.current = true;
 
-    requestPermissions().then(async () => {
-      Beacon.checkPermissions().then(setHasPermissions);
+    (async () => {
+      // Step 1: permissions first — configure() must come after on SDK 34+
+      await requestPermissions();
+
+      // Step 2: configure once — all screens share this config
+      Beacon.configure({
+        scanPeriod: 1100,
+        backgroundScanPeriod: 10000,
+        betweenScanPeriod: 0,
+        foregroundService: true,
+        foregroundServiceNotification: {
+          title: 'Beacon Example',
+          text: 'Scanning for beacons...',
+        },
+        kalmanFilter: { enabled: true },
+        aggressiveBackground: false,
+      });
+
+      // Step 3: battery optimization check
       const exempt = await Beacon.isIgnoringBatteryOptimizations();
-      console.log(`[DOZE] battery optimization exempt: ${exempt}`);
+      console.log(`[beacon] battery optimization exempt: ${exempt}`);
       if (!exempt) {
         Beacon.requestIgnoreBatteryOptimizations();
       }
-      // NOTE: openAutostartSettings() intentionally NOT called here.
-      // Calling it automatically sends the app to background right after startup,
-      // triggering IMPORTANCE_CHANGE events in the BLE stack that cause scan data
-      // loss on Xiaomi/MIUI. Call it only from a user-initiated onboarding action.
-    });
-
-    const rangingSub = Beacon.onBeaconsRanged((event) => {
-      const ts = new Date().toISOString();
-      if (event.beacons.length === 0) {
-        console.log(`[DOZE] ${ts} — scan fired, 0 beacons`);
-      } else {
-        event.beacons.forEach((b) => {
-          console.log(
-            `[DOZE] ${ts} — ${b.uuid} (${b.major}/${b.minor}) ` +
-              `rssi=${b.rssi} dBm | filtered=${b.distance.toFixed(2)}m | raw=${b.rawDistance.toFixed(2)}m`
-          );
-        });
-      }
-      setBeacons(event.beacons);
-    });
-
-    const monitorSub = Beacon.onRegionStateChanged((event) => {
-      const ts = new Date().toISOString();
-      console.log(
-        `[DOZE] ${ts} — region ${event.state}: ${event.region.identifier}`
-      );
-      setRegionState(event.state);
-    });
-
-    return () => {
-      rangingSub.remove();
-      monitorSub.remove();
-    };
+    })();
   }, []);
 
-  const handleStartRanging = async () => {
-    await Beacon.startRanging(TEST_REGION);
-    setIsRanging(true);
-  };
-
-  const handleStopRanging = async () => {
-    await Beacon.stopRanging(TEST_REGION);
-    setIsRanging(false);
-    setBeacons([]);
-  };
-
-  const handleStartMonitoring = () => {
-    Beacon.startMonitoring(TEST_REGION);
-  };
-
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Beacon Test</Text>
-
-      <Text style={styles.status}>
-        Permissions:{' '}
-        {hasPermissions === null
-          ? '...'
-          : hasPermissions
-            ? 'granted'
-            : 'denied'}
-      </Text>
-
-      <Text style={styles.status}>Region: {regionState}</Text>
-
-      <View style={styles.buttons}>
+    <View style={styles.root}>
+      <View style={styles.tabs}>
         <Button
-          title={isRanging ? 'Stop Ranging' : 'Start Ranging'}
-          onPress={isRanging ? handleStopRanging : handleStartRanging}
+          title="Test"
+          onPress={() => setScreen('test')}
+          color={screen === 'test' ? '#007aff' : '#aaa'}
         />
-        <Button title="Start Monitoring" onPress={handleStartMonitoring} />
+        <Button
+          title="Monitor → Range"
+          onPress={() => setScreen('monitor')}
+          color={screen === 'monitor' ? '#007aff' : '#aaa'}
+        />
       </View>
-
-      <Text style={styles.sectionTitle}>
-        Beacons detected: {beacons.length}
-      </Text>
-
-      <FlatList
-        data={beacons}
-        keyExtractor={(item) => `${item.uuid}-${item.major}-${item.minor}`}
-        renderItem={({ item }) => (
-          <View style={styles.beacon}>
-            <Text style={styles.beaconUuid}>{item.uuid}</Text>
-            <Text style={styles.beaconMac}>{item.macAddress}</Text>
-            <Text>
-              Major: {item.major} Minor: {item.minor}
-            </Text>
-            <Text>RSSI: {item.rssi} dBm</Text>
-            <Text style={styles.beaconDistance}>
-              {item.distance.toFixed(2)} m
-            </Text>
-          </View>
-        )}
-      />
+      {screen === 'test' ? <TestScreen /> : <MonitorThenRangeExample />}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingTop: 60,
-    paddingHorizontal: 20,
-    backgroundColor: '#fff',
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginBottom: 16,
-  },
-  status: {
-    fontSize: 14,
-    marginBottom: 8,
-    color: '#555',
-  },
-  buttons: {
+  root: { flex: 1 },
+  tabs: {
     flexDirection: 'row',
-    gap: 12,
-    marginVertical: 16,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  beacon: {
-    padding: 12,
-    marginBottom: 8,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 8,
-  },
-  beaconUuid: {
-    fontSize: 12,
-    color: '#888',
-    marginBottom: 2,
-  },
-  beaconMac: {
-    fontSize: 12,
-    color: '#aaa',
-    marginBottom: 6,
-  },
-  beaconDistance: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#333',
-    marginTop: 4,
+    justifyContent: 'space-around',
+    paddingTop: 52,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    backgroundColor: '#fff',
   },
 });

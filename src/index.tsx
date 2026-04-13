@@ -66,6 +66,14 @@ const Beacon = {
     return NativeBeacon.stopMonitoring(region);
   },
 
+  getRangedRegions(): Promise<BeaconRegion[]> {
+    return NativeBeacon.getRangedRegions();
+  },
+
+  getMonitoredRegions(): Promise<BeaconRegion[]> {
+    return NativeBeacon.getMonitoredRegions();
+  },
+
   /**
    * Returns true if the app is excluded from Android battery optimization.
    * When not excluded, Doze mode throttles BLE scanning with the screen off.

@@ -257,6 +257,8 @@ Detects region entry/exit. Battery efficient — use to wake up ranging when the
 ### Ranging vs Monitoring — use one or the other per region
 
 > **⚠️ Do not call `startRanging` and `startMonitoring` on the same region simultaneously.** When both are active on the same region, the monitoring state machine interferes with the ranging scan cycle: `onRegionStateChanged` oscillates rapidly between `inside` and `outside`, and every transition to `outside` silences ranging until the next `inside` event. The symptom — intermittent zero results while standing next to beacons — is identical to a hardware or permission failure, making it extremely difficult to diagnose.
+>
+> The library enforces this at runtime — calling either method while the other is already active on the same region identifier rejects the promise with a `RANGING_MONITORING_CONFLICT` error.
 
 These are distinct use cases with different APIs:
 
@@ -531,7 +533,7 @@ adb uninstall com.beacon.example
 
 ### Ranging always returns 0 beacons despite beacons being nearby
 
-Check if `startMonitoring()` is active on the same region as `startRanging()`. The monitoring state machine interferes with ranging on the same region — use one or the other. See [Ranging vs Monitoring](#ranging-vs-monitoring--use-one-or-the-other-per-region).
+Check if `startMonitoring()` was previously called on the same region as `startRanging()`. If the conflict was introduced after this guard was added, the call will now reject with `RANGING_MONITORING_CONFLICT`. See [Ranging vs Monitoring](#ranging-vs-monitoring--use-one-or-the-other-per-region).
 
 ### Scanning stops ~20–30s after screen off (Xiaomi/HyperOS)
 

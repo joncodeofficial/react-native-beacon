@@ -48,7 +48,7 @@ Work required:
 ### API additions
 
 - [ ] Region-scoped ranging callback: `Beacon.onBeaconsRanged('zone-a', callback)`
-- [ ] `Beacon.getRangedRegions()` / `Beacon.getMonitoredRegions()` — useful for cleanup on restart
+- [x] `Beacon.getRangedRegions()` / `Beacon.getMonitoredRegions()` — useful for cleanup on restart
 - [ ] Moving average filter as alternative to Kalman: `configure({ smoothing: { type: 'moving-average', window: 5 } })`
 - [ ] `Beacon.getNearestBeacon(beacons)` — returns closest beacon from a list
 
@@ -89,23 +89,10 @@ Beacon.onZoneChanged((event) => {
 });
 ```
 
----
-
-## V4 — C++ engine via Nitro Modules (future)
-
-Move positioning math (trilateration, Kalman, smoothing) to a shared C++ layer
-via Nitro Modules / JSI. Single implementation for both platforms, no JS thread
-involvement for math-heavy operations.
-
-Only worth doing once the TypeScript positioning engine in V3 is validated.
-
----
-
 ## Release checklist
 
 - [x] Remove debug `Log.d` calls
 - [x] Add `CHANGELOG.md`
 - [ ] Verify permissions on Android 12, 13, 14 (`BLUETOOTH_SCAN`, `POST_NOTIFICATIONS`, `FOREGROUND_SERVICE_LOCATION`)
 - [ ] Test with multiple beacon manufacturers (Estimote, Kontakt.io, Minew)
-- [ ] Implement iOS (V2)
 - [x] Publish to npm as `react-native-beacon-kit`

@@ -79,6 +79,7 @@ class BeaconModule(reactContext: ReactApplicationContext) :
   private val watchdogHandler = Handler(Looper.getMainLooper())
   private var watchdogRunnable: Runnable? = null
   private val activeRangingRegions = java.util.concurrent.CopyOnWriteArrayList<Region>()
+  private val activeMonitoringRegions = java.util.concurrent.CopyOnWriteArrayList<Region>()
 
   // Initializes BeaconManager once with parsers and scan periods.
   // BeaconManager is an app-level singleton that outlives JS reloads. BeaconModule
@@ -313,6 +314,20 @@ class BeaconModule(reactContext: ReactApplicationContext) :
   override fun startRanging(region: ReadableMap, promise: Promise) {
     try {
       val beaconRegion = readableMapToRegion(region)
+
+      // Guard: ranging and monitoring on the same region interfere with each other.
+      // AltBeacon's monitoring state machine resets the BLE scan cycle on region-exit,
+      // silencing ranging until the next region-entry event.
+      if (activeMonitoringRegions.any { it.uniqueId == beaconRegion.uniqueId }) {
+        promise.reject(
+          "RANGING_MONITORING_CONFLICT",
+          "Cannot call startRanging on region '${beaconRegion.uniqueId}' — " +
+          "startMonitoring is already active on the same region. " +
+          "They interfere with each other. Call stopMonitoring first, or use a different region identifier."
+        )
+        return
+      }
+
       val manager = getOrCreateBeaconManager()
 
       // Remove all previously registered notifiers before adding a new one.
@@ -362,6 +377,19 @@ class BeaconModule(reactContext: ReactApplicationContext) :
   override fun startMonitoring(region: ReadableMap, promise: Promise) {
     try {
       val beaconRegion = readableMapToRegion(region)
+
+      // Guard: same conflict as startRanging — the monitoring state machine interferes
+      // with ranging's scan cycle when both run on the same region simultaneously.
+      if (activeRangingRegions.any { it.uniqueId == beaconRegion.uniqueId }) {
+        promise.reject(
+          "RANGING_MONITORING_CONFLICT",
+          "Cannot call startMonitoring on region '${beaconRegion.uniqueId}' — " +
+          "startRanging is already active on the same region. " +
+          "They interfere with each other. Call stopRanging first, or use a different region identifier."
+        )
+        return
+      }
+
       val manager = getOrCreateBeaconManager()
 
       manager.removeAllMonitorNotifiers()
@@ -377,6 +405,10 @@ class BeaconModule(reactContext: ReactApplicationContext) :
       manager.addMonitorNotifier(monitorNotifier!!)
 
       manager.startMonitoring(beaconRegion)
+
+      if (activeMonitoringRegions.none { it.uniqueId == beaconRegion.uniqueId }) {
+        activeMonitoringRegions.add(beaconRegion)
+      }
       promise.resolve(null)
     } catch (e: Exception) {
       promise.reject("MONITORING_ERROR", e.message, e)
@@ -385,11 +417,29 @@ class BeaconModule(reactContext: ReactApplicationContext) :
 
   override fun stopMonitoring(region: ReadableMap, promise: Promise) {
     try {
-      getOrCreateBeaconManager().stopMonitoring(readableMapToRegion(region))
+      val beaconRegion = readableMapToRegion(region)
+      getOrCreateBeaconManager().stopMonitoring(beaconRegion)
+      activeMonitoringRegions.removeAll { it.uniqueId == beaconRegion.uniqueId }
       promise.resolve(null)
     } catch (e: Exception) {
       promise.reject("MONITORING_ERROR", e.message, e)
     }
+  }
+
+  override fun getRangedRegions(promise: Promise) {
+    val array = Arguments.createArray()
+    for (region in activeRangingRegions) {
+      array.pushMap(regionToWritableMap(region))
+    }
+    promise.resolve(array)
+  }
+
+  override fun getMonitoredRegions(promise: Promise) {
+    val array = Arguments.createArray()
+    for (region in activeMonitoringRegions) {
+      array.pushMap(regionToWritableMap(region))
+    }
+    promise.resolve(array)
   }
 
   // Returns true if the app is excluded from Android battery optimization.
@@ -511,6 +561,7 @@ class BeaconModule(reactContext: ReactApplicationContext) :
     unregisterScreenReceiver()
     stopWatchdog()
     activeRangingRegions.clear()
+    activeMonitoringRegions.clear()
     wakeLock?.let { if (it.isHeld) it.release() }
     super.invalidate()
   }

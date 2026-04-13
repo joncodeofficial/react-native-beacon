@@ -61,6 +61,10 @@ export interface Spec extends TurboModule {
   startMonitoring(region: BeaconRegion): Promise<void>;
   stopMonitoring(region: BeaconRegion): Promise<void>;
 
+  // Returns the currently active ranging / monitoring regions
+  getRangedRegions(): Promise<BeaconRegion[]>;
+  getMonitoredRegions(): Promise<BeaconRegion[]>;
+
   // Battery optimization — required for reliable scanning with screen off
   isIgnoringBatteryOptimizations(): Promise<boolean>;
   requestIgnoreBatteryOptimizations(): void;
