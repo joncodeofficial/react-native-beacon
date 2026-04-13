@@ -141,7 +141,15 @@ function MyComponent() {
         console.log(beacon.macAddress);
       });
     });
-    return () => sub.remove();
+
+    const rangingFailedSub = Beacon.onRangingFailed((event) => {
+      console.warn('[beacon]', event.code, event.message);
+    });
+
+    return () => {
+      sub.remove();
+      rangingFailedSub.remove();
+    };
   }, []);
 
   // Step 2–4: request permissions → configure → start
@@ -168,6 +176,9 @@ function MyComponent() {
 
       // Step 4: start ranging (or monitoring — not both on the same region)
       await Beacon.startRanging(region);
+    } catch (error) {
+      // Immediate start-up failure (invalid args, conflict, permission/setup issue)
+      console.warn('[beacon] start failed', error);
     } finally {
       startingRef.current = false;
     }
@@ -177,6 +188,29 @@ function MyComponent() {
     await Beacon.stopRanging(region);
   }, []);
 }
+```
+
+### Error handling semantics
+
+The library reports failures through two different channels:
+
+- **Promise rejection** from `startRanging()` / `startMonitoring()` for **immediate call-time failures** such as invalid arguments, `RANGING_MONITORING_CONFLICT`, or platform/setup errors detected while starting.
+- **`onRangingFailed()` / `onMonitoringFailed()` events** for **runtime or asynchronous native failures** that occur after the operation has already started.
+
+Use both:
+
+```ts
+try {
+  await Beacon.startMonitoring(region);
+} catch (error) {
+  // Immediate failure while starting
+  console.warn('[beacon] startMonitoring failed', error);
+}
+
+const sub = Beacon.onMonitoringFailed((event) => {
+  // Failure reported later by the native layer while monitoring is active
+  console.warn('[beacon] runtime monitoring failure', event.code, event.message);
+});
 ```
 
 ## API
@@ -334,6 +368,30 @@ sub.remove(); // unsubscribe
 const sub = Beacon.onRegionStateChanged((event) => {
   // event.region — the region
   // event.state  — 'inside' | 'outside'
+});
+```
+
+### `onRangingFailed(callback)`
+
+Emits a failure event when the native layer reports a runtime or asynchronous ranging error.
+
+```ts
+const sub = Beacon.onRangingFailed((event) => {
+  // event.code       — stable error code, e.g. 'RANGING_ERROR'
+  // event.message    — human-readable message
+  // event.region     — region when available
+  // event.nativeCode — native platform error code when available
+  // event.domain     — iOS NSError domain when available
+});
+```
+
+### `onMonitoringFailed(callback)`
+
+Emits a failure event when the native layer reports a runtime or asynchronous monitoring error.
+
+```ts
+const sub = Beacon.onMonitoringFailed((event) => {
+  // Same payload shape as onRangingFailed()
 });
 ```
 
