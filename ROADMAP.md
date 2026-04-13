@@ -89,6 +89,15 @@ Beacon.onZoneChanged((event) => {
 });
 ```
 
+## V4 — Developer experience (planned)
+
+- [ ] `useNearestBeacon(region)` — hook that returns the single closest beacon in real time
+- [ ] `useBeaconMap(beaconMap)` — hook that maps beacon readings to named locations
+- [ ] Expo config plugin for automatic permission injection (`app.json` → native)
+- [ ] Full TypeScript strict mode across the library
+
+---
+
 ## Release checklist
 
 - [x] Remove debug `Log.d` calls
