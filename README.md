@@ -99,25 +99,34 @@ module.exports = withBleScanPermissionFix({ /* your config */ });
 
 ## Usage
 
+> **Recommended for React apps:** use the hooks API. It abstracts listener setup, React state, error state, and the correct start/stop flow. The imperative `Beacon.*` methods remain available as a low-level API for advanced cases, custom orchestration, or non-hook code.
+
+Available hooks:
+
+- `useBeaconRanging({ region })`
+- `useBeaconMonitoring({ region })`
+- `useMonitorThenRange({ region })`
+
 ### Required call order
 
 The following order is mandatory on Android, especially on SDK 34+:
 
 ```
-1. Register listeners at component mount (useEffect) — independent of permissions
+1. Mount the hook (or register listeners manually if using the low-level API)
 2. Request permissions (await all; ACCESS_BACKGROUND_LOCATION separately)
 3. Beacon.configure()  — after permissions on SDK 34+
-4. Beacon.startRanging(region)  OR  Beacon.startMonitoring(region)
-   ↑ not both on the same region simultaneously — see Ranging vs Monitoring below
+4. Call `start()` from the hook result  OR  call `Beacon.startRanging(region)` / `Beacon.startMonitoring(region)`
+   ↑ ranging and monitoring must not run on the same region simultaneously — see Ranging vs Monitoring below
 ```
 
 On SDK 34+, Android enforces permission checks when a foreground service is involved. Calling `configure({ foregroundService: true })` before permissions are granted will throw a `SecurityException` on fresh installs. On SDK ≤ 33 this appeared to work because permissions were pre-granted from previous installs.
 
-### Example
+### Hook example
 
 ```ts
-import { useEffect, useRef, useCallback } from 'react';
-import Beacon from 'react-native-beacon-kit';
+import { useCallback } from 'react';
+import { Button, Text } from 'react-native';
+import Beacon, { useBeaconRanging } from 'react-native-beacon-kit';
 
 const region = {
   identifier: 'my-region',
@@ -125,46 +134,22 @@ const region = {
 };
 
 function MyComponent() {
-  const startingRef = useRef(false);
+  const {
+    beacons,
+    error,
+    isActive,
+    isStarting,
+    start: startRanging,
+    stop: stopRanging,
+  } = useBeaconRanging({ region });
 
-  // Step 1: Register listeners at mount — independent of permissions and scanning state.
-  // Keeping listeners outside the start/stop lifecycle prevents duplicate subscriptions
-  // if start() is called more than once (e.g. after a stop/restart cycle).
-  useEffect(() => {
-    const sub = Beacon.onBeaconsRanged((event) => {
-      event.beacons.forEach((beacon) => {
-        console.log(beacon.uuid, beacon.major, beacon.minor);
-        console.log(beacon.distance);      // meters (Kalman-filtered)
-        console.log(beacon.rawDistance);   // meters (raw from AltBeacon)
-        console.log(beacon.rssi);          // dBm
-        /** @warning May be randomized on Android 10+ */
-        console.log(beacon.macAddress);
-      });
-    });
-
-    const rangingFailedSub = Beacon.onRangingFailed((event) => {
-      console.warn('[beacon]', event.code, event.message);
-    });
-
-    return () => {
-      sub.remove();
-      rangingFailedSub.remove();
-    };
-  }, []);
-
-  // Step 2–4: request permissions → configure → start
-  // Guard with a ref (not state) to prevent double-invocation from React's render cycle.
-  // State updates are batched and async; refs are synchronous and prevent re-entrant calls.
   const start = useCallback(async () => {
-    if (startingRef.current) return;
-    startingRef.current = true;
     try {
-      await requestPermissions(); // your permission logic here
+      await requestPermissions();
 
-      // Step 3: configure() only after permissions resolve (SDK 34+ requirement)
       Beacon.configure({
-        scanPeriod: 1100,            // foreground: ~1s updates, no throttle risk
-        backgroundScanPeriod: 10000, // background: safe from Android's 5-in-30s throttle
+        scanPeriod: 1100,
+        backgroundScanPeriod: 10000,
         betweenScanPeriod: 0,
         foregroundService: true,
         foregroundServiceNotification: {
@@ -174,19 +159,26 @@ function MyComponent() {
         kalmanFilter: { enabled: true },
       });
 
-      // Step 4: start ranging (or monitoring — not both on the same region)
-      await Beacon.startRanging(region);
+      await startRanging();
     } catch (error) {
-      // Immediate start-up failure (invalid args, conflict, permission/setup issue)
       console.warn('[beacon] start failed', error);
-    } finally {
-      startingRef.current = false;
     }
-  }, []);
+  }, [startRanging]);
 
   const stop = useCallback(async () => {
-    await Beacon.stopRanging(region);
-  }, []);
+    await stopRanging();
+  }, [stopRanging]);
+
+  return (
+    <>
+      <Text>Detected beacons: {beacons.length}</Text>
+      {error ? <Text>{error.message}</Text> : null}
+      <Button
+        title={isActive ? 'Stop' : isStarting ? 'Starting...' : 'Start'}
+        onPress={isActive ? stop : start}
+      />
+    </>
+  );
 }
 ```
 
@@ -194,17 +186,21 @@ function MyComponent() {
 
 The library reports failures through two different channels:
 
-- **Promise rejection** from `startRanging()` / `startMonitoring()` for **immediate call-time failures** such as invalid arguments, `RANGING_MONITORING_CONFLICT`, or platform/setup errors detected while starting.
+- **Promise rejection** from `startRanging()` / `startMonitoring()` or hook `start()` / `stop()` for **immediate call-time failures** such as invalid arguments, `RANGING_MONITORING_CONFLICT`, or platform/setup errors detected while starting.
 - **`onRangingFailed()` / `onMonitoringFailed()` events** for **runtime or asynchronous native failures** that occur after the operation has already started.
+
+When using hooks, the latest failure is also exposed via the hook's `error` field.
 
 Use both:
 
 ```ts
+const { error, start } = useBeaconMonitoring({ region });
+
 try {
-  await Beacon.startMonitoring(region);
+  await start();
 } catch (error) {
   // Immediate failure while starting
-  console.warn('[beacon] startMonitoring failed', error);
+  console.warn('[beacon] hook start failed', error);
 }
 
 const sub = Beacon.onMonitoringFailed((event) => {
@@ -214,6 +210,57 @@ const sub = Beacon.onMonitoringFailed((event) => {
 ```
 
 ## API
+
+### Hooks API
+
+The hooks API is the recommended React interface. It handles event subscriptions, React state, error state, and start/stop orchestration for you.
+
+### `useBeaconRanging({ region, autoStart?, stopOnUnmount? })`
+
+Returns:
+
+- `beacons`
+- `error`
+- `isActive`
+- `isStarting`
+- `isStopping`
+- `clearError()`
+- `start()`
+- `stop()`
+
+### `useBeaconMonitoring({ region, autoStart?, stopOnUnmount? })`
+
+Returns:
+
+- `regionState` (`'unknown' | 'inside' | 'outside'`)
+- `error`
+- `isActive`
+- `isStarting`
+- `isStopping`
+- `clearError()`
+- `start()`
+- `stop()`
+
+### `useMonitorThenRange({ region, autoStart?, stopOnUnmount? })`
+
+Recommended when you want monitoring to wake the workflow and ranging to activate only while the user is inside the region.
+
+Returns:
+
+- `beacons`
+- `regionState`
+- `isRanging`
+- `error`
+- `isActive`
+- `isStarting`
+- `isStopping`
+- `clearError()`
+- `start()`
+- `stop()`
+
+### Low-level API
+
+The imperative `Beacon.*` API is still supported and powers the hooks internally. Use it when you need custom orchestration, integration with existing imperative code, or behavior that doesn't map cleanly to a hook.
 
 ### `configure(config)`
 

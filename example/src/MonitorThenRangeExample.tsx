@@ -1,23 +1,15 @@
 /**
  * MonitorThenRangeExample
  *
- * Demonstrates the recommended background pattern:
- *   1. startMonitoring keeps the app alive with minimal battery use
- *   2. When the user enters the region → startRanging for precise distance
- *   3. When the user exits the region → stopRanging to save battery
- *
- * This is the correct way to combine monitoring and ranging.
- * Do NOT call startMonitoring and startRanging on the same region simultaneously —
- * use this sequential pattern instead.
+ * Demonstrates the recommended hook-based background pattern:
+ *   1. App-level code handles permissions + Beacon.configure()
+ *   2. useMonitorThenRange() owns listeners, state, and region transitions
+ *   3. The component only decides when to start or stop the workflow
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback } from 'react';
 import { Button, FlatList, StyleSheet, Text, View } from 'react-native';
-import Beacon, {
-  type Beacon as BeaconType,
-  type BeaconFailureEvent,
-} from 'react-native-beacon-kit';
-import { handleMonitorThenRangeStateChange } from './monitorThenRange';
+import { useMonitorThenRange } from 'react-native-beacon-kit';
 
 const REGION = {
   identifier: 'my-region',
@@ -25,91 +17,34 @@ const REGION = {
 };
 
 export default function MonitorThenRangeExample() {
-  const startingRef = useRef(false);
-  const [regionState, setRegionState] = useState<
-    'unknown' | 'inside' | 'outside'
-  >('unknown');
-  const [beacons, setBeacons] = useState<BeaconType[]>([]);
-  const [isMonitoring, setIsMonitoring] = useState(false);
-  const [lastError, setLastError] = useState<string | null>(null);
-
-  const handleFailure = useCallback((event: BeaconFailureEvent) => {
-    const prefix = event.region?.identifier
-      ? `${event.region.identifier}: `
-      : '';
-    const message = `[${event.code}] ${prefix}${event.message}`;
-    console.warn(`[beacon] ${message}`);
-    setLastError(message);
-  }, []);
-
-  // Step 1: Register listeners at mount — independent of permissions and scanning state.
-  useEffect(() => {
-    const rangingSub = Beacon.onBeaconsRanged((event) => {
-      setLastError(null);
-      setBeacons(event.beacons);
-    });
-
-    // Step 2 (automatic): when the region state changes, start or stop ranging.
-    // This is the core of the pattern — ranging is driven by monitoring events,
-    // not by the user manually pressing a button.
-    const monitorSub = Beacon.onRegionStateChanged(({ state }) => {
-      setLastError(null);
-      handleMonitorThenRangeStateChange(state as 'inside' | 'outside', REGION, {
-        setRegionState,
-        clearBeacons: () => setBeacons([]),
-        startRanging: Beacon.startRanging,
-        stopRanging: Beacon.stopRanging,
-      }).catch((error: unknown) => {
-        setLastError(
-          error instanceof Error ? error.message : 'Unknown ranging error'
-        );
-      });
-    });
-
-    const rangingFailedSub = Beacon.onRangingFailed(handleFailure);
-    const monitoringFailedSub = Beacon.onMonitoringFailed(handleFailure);
-
-    return () => {
-      rangingSub.remove();
-      monitorSub.remove();
-      rangingFailedSub.remove();
-      monitoringFailedSub.remove();
-    };
-  }, [handleFailure]);
+  const {
+    beacons,
+    error,
+    isActive,
+    isStarting,
+    isStopping,
+    regionState,
+    start,
+    stop,
+  } = useMonitorThenRange({
+    region: REGION,
+  });
 
   const handleStart = useCallback(async () => {
-    if (startingRef.current) return;
-    startingRef.current = true;
     try {
-      setLastError(null);
-      // configure() already ran in App.tsx — just start monitoring here.
-      // Ranging starts automatically from the onRegionStateChanged callback
-      // above when the user enters the region.
-      await Beacon.startMonitoring(REGION);
-      setIsMonitoring(true);
-    } catch (error: unknown) {
-      setLastError(
-        error instanceof Error ? error.message : 'Unknown monitoring error'
-      );
-    } finally {
-      startingRef.current = false;
-    }
-  }, []);
+      await start();
+    } catch {}
+  }, [start]);
 
   const handleStop = useCallback(async () => {
     try {
-      setLastError(null);
-      await Beacon.stopMonitoring(REGION);
-      await Beacon.stopRanging(REGION);
-      setIsMonitoring(false);
-      setRegionState('unknown');
-      setBeacons([]);
-    } catch (error: unknown) {
-      setLastError(
-        error instanceof Error ? error.message : 'Unknown stop error'
-      );
-    }
-  }, []);
+      await stop();
+    } catch {}
+  }, [stop]);
+
+  const lastError = error
+    ? `[${error.code}] ${error.region?.identifier ? `${error.region.identifier}: ` : ''}${error.message}`
+    : null;
 
   const stateColor =
     regionState === 'inside'
@@ -140,10 +75,18 @@ export default function MonitorThenRangeExample() {
       {lastError ? <Text style={styles.error}>{lastError}</Text> : null}
 
       <View style={styles.buttons}>
-        {!isMonitoring ? (
-          <Button title="Start" onPress={handleStart} />
+        {!isActive ? (
+          <Button
+            title={isStarting ? 'Starting...' : 'Start'}
+            onPress={handleStart}
+            disabled={isStarting}
+          />
         ) : (
-          <Button title="Stop" onPress={handleStop} />
+          <Button
+            title={isStopping ? 'Stopping...' : 'Stop'}
+            onPress={handleStop}
+            disabled={isStopping}
+          />
         )}
       </View>
 

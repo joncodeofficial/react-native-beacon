@@ -8,8 +8,9 @@ import {
   View,
 } from 'react-native';
 import Beacon, {
-  type Beacon as BeaconType,
   type BeaconRegion,
+  useBeaconMonitoring,
+  useBeaconRanging,
 } from 'react-native-beacon-kit';
 
 const TEST_REGION: BeaconRegion = {
@@ -19,87 +20,74 @@ const TEST_REGION: BeaconRegion = {
 
 export default function TestScreen() {
   const [hasPermissions, setHasPermissions] = useState<boolean | null>(null);
-  const [beacons, setBeacons] = useState<BeaconType[]>([]);
-  const [regionState, setRegionState] = useState<string>('unknown');
-  const [isRanging, setIsRanging] = useState(false);
-  const [isMonitoring, setIsMonitoring] = useState(false);
   const [rangedRegions, setRangedRegions] = useState<BeaconRegion[]>([]);
   const [monitoredRegions, setMonitoredRegions] = useState<BeaconRegion[]>([]);
-  const [lastError, setLastError] = useState<string | null>(null);
-
-  // Step 1: Register listeners at mount — independent of permissions and scanning state.
-  useEffect(() => {
-    const rangingSub = Beacon.onBeaconsRanged((event) => {
-      const ts = new Date().toISOString();
-      if (event.beacons.length === 0) {
-        console.log(`[beacon] ${ts} — scan fired, 0 beacons`);
-      } else {
-        event.beacons.forEach((b) => {
-          console.log(
-            `[beacon] ${ts} — ${b.uuid} (${b.major}/${b.minor}) ` +
-              `rssi=${b.rssi} dBm | filtered=${b.distance.toFixed(2)}m | raw=${b.rawDistance.toFixed(2)}m`
-          );
-        });
-      }
-      setBeacons(event.beacons);
-    });
-
-    const monitorSub = Beacon.onRegionStateChanged((event) => {
-      const ts = new Date().toISOString();
-      console.log(
-        `[beacon] ${ts} — region ${event.state}: ${event.region.identifier}`
-      );
-      setRegionState(event.state);
-    });
-
-    return () => {
-      rangingSub.remove();
-      monitorSub.remove();
-    };
-  }, []);
+  const ranging = useBeaconRanging({ region: TEST_REGION });
+  const monitoring = useBeaconMonitoring({ region: TEST_REGION });
 
   // Read permission status for display — configure() already ran in App.tsx
   useEffect(() => {
     Beacon.checkPermissions().then(setHasPermissions);
   }, []);
 
-  const handleStartRanging = useCallback(async () => {
-    setLastError(null);
-    try {
-      await Beacon.startRanging(TEST_REGION);
-      setIsRanging(true);
-    } catch (e: any) {
-      const msg = e?.message ?? String(e);
-      console.log(`[beacon] startRanging error: ${msg}`);
-      setLastError(msg);
+  useEffect(() => {
+    const ts = new Date().toISOString();
+    if (ranging.beacons.length === 0) {
+      console.log(`[beacon] ${ts} — scan fired, 0 beacons`);
+      return;
     }
-  }, []);
+
+    ranging.beacons.forEach((b) => {
+      console.log(
+        `[beacon] ${ts} — ${b.uuid} (${b.major}/${b.minor}) ` +
+          `rssi=${b.rssi} dBm | filtered=${b.distance.toFixed(2)}m | raw=${b.rawDistance.toFixed(2)}m`
+      );
+    });
+  }, [ranging.beacons]);
+
+  useEffect(() => {
+    if (monitoring.regionState === 'unknown') return;
+    const ts = new Date().toISOString();
+    console.log(
+      `[beacon] ${ts} — region ${monitoring.regionState}: ${TEST_REGION.identifier}`
+    );
+  }, [monitoring.regionState]);
+
+  const lastError = ranging.error?.message ?? monitoring.error?.message ?? null;
+
+  const handleStartRanging = useCallback(async () => {
+    ranging.clearError();
+    monitoring.clearError();
+    try {
+      await ranging.start();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.log(`[beacon] startRanging error: ${msg}`);
+    }
+  }, [monitoring, ranging]);
 
   const handleStopRanging = useCallback(async () => {
-    setLastError(null);
-    await Beacon.stopRanging(TEST_REGION);
-    setIsRanging(false);
-    setBeacons([]);
-  }, []);
+    ranging.clearError();
+    monitoring.clearError();
+    await ranging.stop();
+  }, [monitoring, ranging]);
 
   const handleStartMonitoring = useCallback(async () => {
-    setLastError(null);
+    ranging.clearError();
+    monitoring.clearError();
     try {
-      await Beacon.startMonitoring(TEST_REGION);
-      setIsMonitoring(true);
-    } catch (e: any) {
-      const msg = e?.message ?? String(e);
+      await monitoring.start();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
       console.log(`[beacon] startMonitoring error: ${msg}`);
-      setLastError(msg);
     }
-  }, []);
+  }, [monitoring, ranging]);
 
   const handleStopMonitoring = useCallback(async () => {
-    setLastError(null);
-    await Beacon.stopMonitoring(TEST_REGION);
-    setIsMonitoring(false);
-    setRegionState('unknown');
-  }, []);
+    ranging.clearError();
+    monitoring.clearError();
+    await monitoring.stop();
+  }, [monitoring, ranging]);
 
   const handleGetRegions = useCallback(async () => {
     const [ranged, monitored] = await Promise.all([
@@ -124,14 +112,15 @@ export default function TestScreen() {
             ? 'granted ✓'
             : 'denied ✗'}
       </Text>
-      <Text style={styles.status}>Region state: {regionState}</Text>
+      <Text style={styles.status}>Region state: {monitoring.regionState}</Text>
 
       {/* --- Ranging --- */}
       <Text style={styles.sectionTitle}>Ranging</Text>
       <View style={styles.row}>
         <Button
-          title={isRanging ? 'Stop Ranging' : 'Start Ranging'}
-          onPress={isRanging ? handleStopRanging : handleStartRanging}
+          title={ranging.isActive ? 'Stop Ranging' : 'Start Ranging'}
+          onPress={ranging.isActive ? handleStopRanging : handleStartRanging}
+          disabled={ranging.isStarting || ranging.isStopping}
         />
       </View>
 
@@ -143,17 +132,20 @@ export default function TestScreen() {
       </Text>
       <View style={styles.row}>
         <Button
-          title={isMonitoring ? 'Stop Monitoring' : 'Start Monitoring'}
-          onPress={isMonitoring ? handleStopMonitoring : handleStartMonitoring}
+          title={monitoring.isActive ? 'Stop Monitoring' : 'Start Monitoring'}
+          onPress={
+            monitoring.isActive ? handleStopMonitoring : handleStartMonitoring
+          }
+          disabled={monitoring.isStarting || monitoring.isStopping}
         />
       </View>
 
       {/* --- Error display --- */}
-      {lastError && (
+      {lastError ? (
         <View style={styles.errorBox}>
           <Text style={styles.errorText}>{lastError}</Text>
         </View>
-      )}
+      ) : null}
 
       {/* --- getRangedRegions / getMonitoredRegions --- */}
       <Text style={styles.sectionTitle}>Active Regions</Text>
@@ -175,10 +167,10 @@ export default function TestScreen() {
 
       {/* --- Beacon list --- */}
       <Text style={styles.sectionTitle}>
-        Beacons detected: {beacons.length}
+        Beacons detected: {ranging.beacons.length}
       </Text>
       <FlatList
-        data={beacons}
+        data={ranging.beacons}
         scrollEnabled={false}
         keyExtractor={(item) => `${item.uuid}-${item.major}-${item.minor}`}
         renderItem={({ item }) => (
