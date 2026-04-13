@@ -101,11 +101,19 @@ module.exports = withBleScanPermissionFix({ /* your config */ });
 
 > **Recommended for React apps:** use the hooks API. It abstracts listener setup, React state, error state, and the correct start/stop flow. The imperative `Beacon.*` methods remain available as a low-level API for advanced cases, custom orchestration, or non-hook code.
 
-Available hooks:
+Choose the hook that matches your workflow:
 
-- `useBeaconRanging({ region })`
-- `useBeaconMonitoring({ region })`
-- `useMonitorThenRange({ region })`
+| Hook | Use it when | What it owns |
+|---|---|---|
+| `useBeaconRanging({ region })` | You want nearby beacon readings, RSSI, and distance | Listeners, `beacons`, error state, and ranging `start()` / `stop()` |
+| `useBeaconMonitoring({ region })` | You only need `inside` / `outside` region state | Listeners, `regionState`, error state, and monitoring `start()` / `stop()` |
+| `useMonitorThenRange({ region })` | You want battery-friendly monitoring that turns on ranging only while inside a region | Monitoring + ranging coordination, listeners, state, errors, and workflow `start()` / `stop()` |
+
+What the hooks do not do:
+
+- They do not request permissions for you.
+- They do not call `Beacon.configure()` for you.
+- They do not replace the low-level API for highly custom orchestration.
 
 ### Required call order
 
@@ -214,6 +222,12 @@ const sub = Beacon.onMonitoringFailed((event) => {
 ### Hooks API
 
 The hooks API is the recommended React interface. It handles event subscriptions, React state, error state, and start/stop orchestration for you.
+
+The hooks intentionally sit above the low-level scanner API:
+
+- Your app is still responsible for requesting permissions in the right UX moment.
+- Your app is still responsible for calling `Beacon.configure()` after permissions are granted.
+- The hooks are focused on component-level beacon state and lifecycle, not global app setup.
 
 ### `useBeaconRanging({ region, autoStart?, stopOnUnmount? })`
 
