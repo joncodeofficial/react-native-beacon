@@ -330,15 +330,19 @@ class BeaconModule(reactContext: ReactApplicationContext) :
 
       val manager = getOrCreateBeaconManager()
 
-      // Remove all previously registered notifiers before adding a new one.
-      // BeaconManager is a singleton — on JS reload a new BeaconModule instance
-      // is created and rangeNotifier resets to null, but stale notifiers from
-      // the previous instance are still registered, causing duplicate events.
-      manager.removeAllRangeNotifiers()
-      rangeNotifier = RangeNotifier { beacons, rgn ->
-        sendBeaconsRangedEvent(beacons, rgn)
+      // Register the notifier once per BeaconModule instance.
+      // rangeNotifier resets to null on every JS reload (new BeaconModule instance),
+      // so the first startRanging call after a reload re-registers it and clears any
+      // stale notifiers left on the singleton from the previous instance.
+      // Subsequent startRanging calls (additional regions) skip this block entirely —
+      // a single notifier handles all regions correctly.
+      if (rangeNotifier == null) {
+        manager.removeAllRangeNotifiers()
+        rangeNotifier = RangeNotifier { beacons, rgn ->
+          sendBeaconsRangedEvent(beacons, rgn)
+        }
+        manager.addRangeNotifier(rangeNotifier!!)
       }
-      manager.addRangeNotifier(rangeNotifier!!)
 
       manager.startRangingBeacons(beaconRegion)
 
@@ -392,17 +396,20 @@ class BeaconModule(reactContext: ReactApplicationContext) :
 
       val manager = getOrCreateBeaconManager()
 
-      manager.removeAllMonitorNotifiers()
-      monitorNotifier = object : MonitorNotifier {
-        override fun didEnterRegion(rgn: Region) {
-          sendRegionStateChangedEvent(rgn, "inside")
-        }
-        override fun didExitRegion(rgn: Region) {
-          sendRegionStateChangedEvent(rgn, "outside")
+      // Same lazy-registration pattern as rangeNotifier — one notifier handles all regions.
+      if (monitorNotifier == null) {
+        manager.removeAllMonitorNotifiers()
+        monitorNotifier = object : MonitorNotifier {
+          override fun didEnterRegion(rgn: Region) {
+            sendRegionStateChangedEvent(rgn, "inside")
+          }
+          override fun didExitRegion(rgn: Region) {
+            sendRegionStateChangedEvent(rgn, "outside")
           }
           override fun didDetermineStateForRegion(state: Int, rgn: Region) {}
         }
-      manager.addMonitorNotifier(monitorNotifier!!)
+        manager.addMonitorNotifier(monitorNotifier!!)
+      }
 
       manager.startMonitoring(beaconRegion)
 
@@ -562,6 +569,11 @@ class BeaconModule(reactContext: ReactApplicationContext) :
     stopWatchdog()
     activeRangingRegions.clear()
     activeMonitoringRegions.clear()
+    // Reset notifier refs so the next BeaconModule instance re-registers them cleanly.
+    // The notifiers themselves are stale after a JS reload — the new instance will
+    // call removeAll + addNotifier on the first startRanging/startMonitoring call.
+    rangeNotifier = null
+    monitorNotifier = null
     wakeLock?.let { if (it.isHeld) it.release() }
     super.invalidate()
   }
