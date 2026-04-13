@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.0](https://github.com/joncodeofficial/react-native-beacon-kit/compare/v0.4.1...v0.5.0) (2026-04-13)
+
+### Features
+
+* add beacon failure events ([df8c240](https://github.com/joncodeofficial/react-native-beacon-kit/commit/df8c24099c2980b7756a6fb3fc0cd26fe94e9208))
+
 ## [0.4.1](https://github.com/joncodeofficial/react-native-beacon-kit/compare/v0.4.0...v0.4.1) (2026-04-13)
 
 ### Bug Fixes
