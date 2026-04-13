@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.0](https://github.com/joncodeofficial/react-native-beacon-kit/compare/v0.5.0...v0.6.0) (2026-04-13)
+
+### Features
+
+* add React beacon hooks ([e130bd2](https://github.com/joncodeofficial/react-native-beacon-kit/commit/e130bd213752b71918641c8f45b6287a2a148ee5))
+
 ## [0.5.0](https://github.com/joncodeofficial/react-native-beacon-kit/compare/v0.4.1...v0.5.0) (2026-04-13)
 
 ### Features
