@@ -18,6 +18,7 @@
     "android",
     "ios",
     "cpp",
+    "app.plugin.js",
     "*.podspec",
     "react-native.config.js",
     "!ios/build",
@@ -74,6 +75,9 @@
   "homepage": "https://github.com/joncodeofficial/react-native-beacon-kit#readme",
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
+  },
+  "dependencies": {
+    "@expo/config-plugins": "^55.0.8"
   },
   "devDependencies": {
     "@commitlint/config-conventional": "^20.5.0",
@@ -168,5 +172,8 @@
       "eslint"
     ],
     "version": "0.59.0"
+  },
+  "dependencies": {
+    "@expo/config-plugins": "^55.0.8"
   }
 }
