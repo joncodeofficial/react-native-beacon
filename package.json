@@ -1,6 +1,6 @@
 {
   "name": "react-native-beacon-kit",
-  "version": "0.6.3",
+  "version": "0.7.0",
   "description": "iBeacon & AltBeacon for React Native — New Architecture (TurboModules + JSI) with real background scanning.",
   "main": "./lib/module/index.js",
   "types": "./lib/typescript/src/index.d.ts",
@@ -172,8 +172,5 @@
       "eslint"
     ],
     "version": "0.59.0"
-  },
-  "dependencies": {
-    "@expo/config-plugins": "^55.0.8"
   }
 }

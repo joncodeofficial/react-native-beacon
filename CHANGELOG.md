@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.0](https://github.com/joncodeofficial/react-native-beacon-kit/compare/v0.6.3...v0.7.0) (2026-04-14)
+
+### Features
+
+* add Expo config plugin for Android and iOS beacon permissions ([ef71a2c](https://github.com/joncodeofficial/react-native-beacon-kit/commit/ef71a2c60bb7233f87078bb73b8ed4a1b22344ce))
+
 ## [0.6.3](https://github.com/joncodeofficial/react-native-beacon-kit/compare/v0.6.2...v0.6.3) (2026-04-14)
 
 ## [0.6.2](https://github.com/joncodeofficial/react-native-beacon-kit/compare/v0.6.1...v0.6.2) (2026-04-13)
