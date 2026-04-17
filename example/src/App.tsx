@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import Beacon from 'react-native-beacon-kit';
 import MonitorThenRangeExample from './MonitorThenRangeExample';
+import StabilityScreen from './StabilityScreen';
 import TestScreen from './TestScreen';
 
 // Permissions + configure live here — once, at the app level.
@@ -41,7 +42,9 @@ async function requestPermissions() {
 
 export default function App() {
   const initRef = useRef(false);
-  const [screen, setScreen] = useState<'test' | 'monitor'>('test');
+  const [screen, setScreen] = useState<'test' | 'monitor' | 'stability'>(
+    'test'
+  );
 
   useEffect(() => {
     if (initRef.current) return;
@@ -87,8 +90,19 @@ export default function App() {
           onPress={() => setScreen('monitor')}
           color={screen === 'monitor' ? '#007aff' : '#aaa'}
         />
+        <Button
+          title="Stability"
+          onPress={() => setScreen('stability')}
+          color={screen === 'stability' ? '#007aff' : '#aaa'}
+        />
       </View>
-      {screen === 'test' ? <TestScreen /> : <MonitorThenRangeExample />}
+      {screen === 'test' ? (
+        <TestScreen />
+      ) : screen === 'monitor' ? (
+        <MonitorThenRangeExample />
+      ) : (
+        <StabilityScreen />
+      )}
     </View>
   );
 }
