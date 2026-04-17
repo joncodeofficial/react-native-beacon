@@ -32,6 +32,8 @@ export const useBeaconRanging = ({
   });
   const { clearError, setError } = controller;
 
+  const regionKey = `${region.identifier}:${region.uuid}:${region.major ?? ''}:${region.minor ?? ''}`;
+
   useEffect(() => {
     const rangingSubscription = Beacon.onBeaconsRanged((event) => {
       if (!regionsMatch(event.region, region)) return;
@@ -48,7 +50,9 @@ export const useBeaconRanging = ({
       rangingSubscription.remove();
       failureSubscription.remove();
     };
-  }, [clearError, region, setError]);
+    // clearError and setError are stable refs; regionKey captures region by value.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [regionKey]);
 
   return {
     ...controller,

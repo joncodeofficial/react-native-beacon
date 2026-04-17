@@ -33,6 +33,8 @@ export const useBeaconMonitoring = ({
   });
   const { clearError, setError } = controller;
 
+  const regionKey = `${region.identifier}:${region.uuid}:${region.major ?? ''}:${region.minor ?? ''}`;
+
   useEffect(() => {
     const stateSubscription = Beacon.onRegionStateChanged((event) => {
       if (!regionsMatch(event.region, region)) return;
@@ -49,7 +51,9 @@ export const useBeaconMonitoring = ({
       stateSubscription.remove();
       failureSubscription.remove();
     };
-  }, [clearError, region, setError]);
+    // clearError and setError are stable refs; regionKey captures region by value.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [regionKey]);
 
   return {
     ...controller,

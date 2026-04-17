@@ -46,9 +46,23 @@ export const useBeaconController = ({
   const stoppingRef = useRef(false);
   const activeRef = useRef(false);
 
-  const clearError = useCallback(() => {
-    setError(null);
-  }, []);
+  // Always-current refs so useCallback/useEffect deps stay stable across renders.
+  const startOperationRef = useRef(startOperation);
+  startOperationRef.current = startOperation;
+
+  const stopOperationRef = useRef(stopOperation);
+  stopOperationRef.current = stopOperation;
+
+  const regionRef = useRef(region);
+  regionRef.current = region;
+
+  const startErrorCodeRef = useRef(startErrorCode);
+  startErrorCodeRef.current = startErrorCode;
+
+  const stopErrorCodeRef = useRef(stopErrorCode);
+  stopErrorCodeRef.current = stopErrorCode;
+
+  const clearError = useCallback(() => setError(null), []);
 
   const start = useCallback(async () => {
     if (startingRef.current || activeRef.current) return;
@@ -58,17 +72,23 @@ export const useBeaconController = ({
     setError(null);
 
     try {
-      await startOperation();
+      await startOperationRef.current();
       activeRef.current = true;
       setIsActive(true);
     } catch (operationError) {
-      setError(normalizeBeaconError(operationError, startErrorCode, region));
+      setError(
+        normalizeBeaconError(
+          operationError,
+          startErrorCodeRef.current,
+          regionRef.current
+        )
+      );
       throw operationError;
     } finally {
       startingRef.current = false;
       setIsStarting(false);
     }
-  }, [region, startErrorCode, startOperation]);
+  }, []); // stable — reads latest values from refs
 
   const stop = useCallback(async () => {
     if (stoppingRef.current) return;
@@ -77,36 +97,37 @@ export const useBeaconController = ({
     setIsStopping(true);
 
     try {
-      await stopOperation();
+      await stopOperationRef.current();
       activeRef.current = false;
       setIsActive(false);
     } catch (operationError) {
-      setError(normalizeBeaconError(operationError, stopErrorCode, region));
+      setError(
+        normalizeBeaconError(
+          operationError,
+          stopErrorCodeRef.current,
+          regionRef.current
+        )
+      );
       throw operationError;
     } finally {
       stoppingRef.current = false;
       setIsStopping(false);
     }
-  }, [region, stopErrorCode, stopOperation]);
+  }, []); // stable — reads latest values from refs
 
   useEffect(() => {
     if (!autoStart) return;
-    start().catch(() => {
-      // Error state is already captured above.
-    });
-  }, [autoStart, start]);
+    start().catch(() => {});
+  }, [autoStart, start]); // start is stable, so this only fires on mount
 
+  // Cleanup runs only on true unmount — stopOperationRef is read at call time.
   useEffect(() => {
     if (!stopOnUnmount) return;
-
     return () => {
       if (!activeRef.current && !startingRef.current) return;
-
-      stopOperation().catch(() => {
-        // The component is unmounting; there is no useful UI surface left to update.
-      });
+      stopOperationRef.current().catch(() => {});
     };
-  }, [stopOnUnmount, stopOperation]);
+  }, [stopOnUnmount]); // no callback dep — avoids running cleanup on every render
 
   return {
     error,
