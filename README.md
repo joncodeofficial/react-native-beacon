@@ -12,16 +12,17 @@ iBeacon and AltBeacon for React Native with a hooks-first API, New Architecture 
 - iOS monitoring flow for region entry and exit
 - iBeacon and AltBeacon support
 - Optional Kalman filter for more stable distance readings
+- Environment diagnostics for Bluetooth, location services, and permissions
 - Expo plugin included
 
 ## When to use each API
 
-| API | Use it when |
-|---|---|
-| `useBeaconRanging()` | You want nearby beacons, RSSI, and distance |
-| `useBeaconMonitoring()` | You only need `inside` / `outside` region state |
+| API                     | Use it when                                                        |
+| ----------------------- | ------------------------------------------------------------------ |
+| `useBeaconRanging()`    | You want nearby beacons, RSSI, and distance                        |
+| `useBeaconMonitoring()` | You only need `inside` / `outside` region state                    |
 | `useMonitorThenRange()` | You want monitoring to wake the flow, then range only while inside |
-| `Beacon.*` | You need custom orchestration or a non-React flow |
+| `Beacon.*`              | You need custom orchestration or a non-React flow                  |
 
 If you are building a screen in React, start with the hooks API.
 
@@ -60,7 +61,7 @@ Optional iOS background location capability:
 
 The Expo plugin adds the required native permissions and default iOS location usage strings. It does not request runtime permissions for you.
 
-## Minimal example
+## Quick start (High-level API)
 
 This is the shortest useful flow for most apps:
 
@@ -86,8 +87,10 @@ export const BeaconScreen = () => {
 
   const handleStart = useCallback(async () => {
     try {
+      // Request runtime permissions first.
       await requestPermissions();
 
+      // Configure the native scanner before starting it.
       Beacon.configure({
         scanPeriod: 1100,
         backgroundScanPeriod: 10000,
@@ -113,9 +116,122 @@ export const BeaconScreen = () => {
 };
 ```
 
+This shows the smallest useful flow. In a real app, you will usually centralize
+permissions and `Beacon.configure()` at the app level, then use hooks inside
+screens.
+
 ### Important Android note
 
 On Android SDK 34+, call `Beacon.configure({ foregroundService: true })` only after permissions are granted. Calling it too early can throw a `SecurityException` on a fresh install.
+
+## Recommended app-level setup
+
+For apps with multiple screens or shared beacon behavior, do permissions and
+initial configuration once at the app level, then let screens use the hooks.
+
+```ts
+import { useEffect } from 'react';
+import Beacon from 'react-native-beacon-kit';
+
+export const App = () => {
+  useEffect(() => {
+    const setup = async () => {
+      await requestPermissions();
+
+      Beacon.configure({
+        scanPeriod: 1100,
+        backgroundScanPeriod: 10000,
+        betweenScanPeriod: 0,
+        foregroundService: true,
+        foregroundServiceNotification: {
+          title: 'My App',
+          text: 'Scanning for beacons...',
+        },
+      });
+    };
+
+    setup().catch((error) => {
+      console.warn('[beacon] app setup failed', error);
+    });
+  }, []);
+
+  return <Screens />;
+};
+```
+
+For a fuller working example, see the `example/` app in this repository:
+[react-native-beacon-kit example](https://github.com/joncodeofficial/react-native-beacon-kit/tree/main/example)
+
+### Low-level API equivalent
+
+Use this style if you need manual orchestration outside the hooks.
+
+```ts
+import { useCallback, useEffect, useState } from 'react';
+import { Button, Text, View } from 'react-native';
+import Beacon from 'react-native-beacon-kit';
+
+const region = {
+  identifier: 'store',
+  uuid: 'FDA50693-A4E2-4FB1-AFCF-C6EB07647825',
+};
+
+export const BeaconScreen = () => {
+  const [beacons, setBeacons] = useState([]);
+  const [error, setError] = useState<string | null>(null);
+  const [isActive, setIsActive] = useState(false);
+
+  useEffect(() => {
+    const rangingSub = Beacon.onBeaconsRanged((event) => {
+      if (event.region.identifier !== region.identifier) return;
+      setError(null);
+      setBeacons(event.beacons);
+    });
+
+    const failureSub = Beacon.onRangingFailed((event) => {
+      if (event.region?.identifier !== region.identifier) return;
+      setError(event.message);
+    });
+
+    return () => {
+      rangingSub.remove();
+      failureSub.remove();
+    };
+  }, []);
+
+  const handleStart = useCallback(async () => {
+    try {
+      await requestPermissions();
+      Beacon.configure({
+        scanPeriod: 1100,
+        backgroundScanPeriod: 10000,
+        betweenScanPeriod: 0,
+      });
+      await Beacon.startRanging(region);
+      setIsActive(true);
+    } catch (error) {
+      console.warn('[beacon] start failed', error);
+    }
+  }, []);
+
+  const handleStop = useCallback(async () => {
+    await Beacon.stopRanging(region);
+    setBeacons([]);
+    setIsActive(false);
+  }, []);
+
+  return (
+    <View>
+      <Text>Detected beacons: {beacons.length}</Text>
+      {error ? <Text>{error}</Text> : null}
+      <Button
+        title={isActive ? 'Stop' : 'Start'}
+        onPress={isActive ? handleStop : handleStart}
+      />
+    </View>
+  );
+};
+```
 
 ## Platform setup
 
@@ -125,15 +241,15 @@ The library declares native permissions, but runtime permission requests are you
 
 Use [react-native-permissions](https://github.com/zoontek/react-native-permissions) or your own runtime flow.
 
-| Permission | When required |
-|---|---|
-| `ACCESS_FINE_LOCATION` | Always |
-| `ACCESS_BACKGROUND_LOCATION` | Android 10+ background scanning |
-| `BLUETOOTH_SCAN` | Android 12+ |
-| `BLUETOOTH_CONNECT` | Android 12+ |
-| `FOREGROUND_SERVICE` | Android background scanning |
-| `FOREGROUND_SERVICE_LOCATION` | Android 14+ location foreground service |
-| `POST_NOTIFICATIONS` | Android 13+ foreground service notification |
+| Permission                    | When required                               |
+| ----------------------------- | ------------------------------------------- |
+| `ACCESS_FINE_LOCATION`        | Always                                      |
+| `ACCESS_BACKGROUND_LOCATION`  | Android 10+ background scanning             |
+| `BLUETOOTH_SCAN`              | Android 12+                                 |
+| `BLUETOOTH_CONNECT`           | Android 12+                                 |
+| `FOREGROUND_SERVICE`          | Android background scanning                 |
+| `FOREGROUND_SERVICE_LOCATION` | Android 14+ location foreground service     |
+| `POST_NOTIFICATIONS`          | Android 13+ foreground service notification |
 
 Important notes:
 
@@ -184,11 +300,13 @@ const sub = Beacon.onRegionStateChanged(({ state }) => {
 
 ### Hooks
 
-All hooks accept:
+Use these hooks if you are building a React screen.
 
-- `region`
-- `autoStart?`
-- `stopOnUnmount?`
+Shared options for the beacon workflow hooks:
+
+- `region`: the beacon region to range or monitor
+- `autoStart?`: start automatically when the hook mounts
+- `stopOnUnmount?`: stop automatically when the component unmounts
 
 Defaults:
 
@@ -197,50 +315,82 @@ Defaults:
 
 #### `useBeaconRanging({ region, autoStart?, stopOnUnmount? })`
 
-Use this for nearby beacon readings and distance estimates.
+Best for foreground proximity UI when you want nearby beacon readings, RSSI,
+and distance.
 
-Returns:
+Returns beacon data plus workflow state:
 
 - `beacons`
 - `error`
-- `isActive`
-- `isStarting`
-- `isStopping`
+- `isActive`, `isStarting`, `isStopping`
 - `clearError()`
-- `start()`
-- `stop()`
+- `start()`, `stop()`
 
 #### `useBeaconMonitoring({ region, autoStart?, stopOnUnmount? })`
 
-Use this for `inside` / `outside` region state without continuous ranging.
+Best when you only need region entry and exit state without continuous ranging.
 
-Returns:
+Returns monitoring state plus workflow state:
 
 - `regionState`
 - `error`
-- `isActive`
-- `isStarting`
-- `isStopping`
+- `isActive`, `isStarting`, `isStopping`
 - `clearError()`
-- `start()`
-- `stop()`
+- `start()`, `stop()`
 
 #### `useMonitorThenRange({ region, autoStart?, stopOnUnmount? })`
 
-Use this when you want monitoring first and ranging only while inside the region.
+Best when you want a battery-friendlier workflow that monitors first and ranges
+only while the device is inside the region.
 
-Returns:
+Returns combined monitoring and ranging state:
 
 - `beacons`
 - `regionState`
 - `isRanging`
 - `error`
-- `isActive`
-- `isStarting`
-- `isStopping`
+- `isActive`, `isStarting`, `isStopping`
 - `clearError()`
-- `start()`
-- `stop()`
+- `start()`, `stop()`
+
+## Environment diagnostics
+
+Use `useBeaconEnvironment()` if you want a React-friendly view of scanner
+readiness without manually wiring snapshot reads and event subscriptions.
+
+Returns:
+
+- `state`
+- `isLoading`
+- `error`
+- `refresh()`
+
+Example:
+
+```ts
+import { Text, View } from 'react-native';
+import { useBeaconEnvironment } from 'react-native-beacon-kit';
+
+export const BeaconDiagnostics = () => {
+  const { state, isLoading, error, refresh } = useBeaconEnvironment();
+
+  if (isLoading) return <Text>Loading diagnostics...</Text>;
+  if (error) return <Text>{error.message}</Text>;
+  if (!state) return <Text>Diagnostics unavailable</Text>;
+
+  return (
+    <View>
+      <Text>Foreground ready: {state.canScanInForeground ? 'yes' : 'no'}</Text>
+      <Text>Background ready: {state.canScanInBackground ? 'yes' : 'no'}</Text>
+      <Text>Bluetooth: {state.bluetoothEnabled ? 'on' : 'off'}</Text>
+      <Text>
+        Location services: {state.locationServicesEnabled ? 'on' : 'off'}
+      </Text>
+      <Text onPress={() => void refresh()}>Refresh diagnostics</Text>
+    </View>
+  );
+};
+```
 
 ### Low-level API
 
@@ -289,6 +439,24 @@ Key fields:
 
 Returns `true` if all required permissions are already granted. It does not request them.
 
+#### `Beacon.getEnvironmentState()`
+
+Returns a snapshot of the current scanning environment:
+
+```ts
+const state = await Beacon.getEnvironmentState();
+// {
+//   bluetoothEnabled,
+//   locationServicesEnabled,
+//   locationPermissionGranted,
+//   bluetoothPermissionGranted,
+//   backgroundPermissionGranted,
+//   permissionsGranted,
+//   canScanInForeground,
+//   canScanInBackground,
+// }
+```
+
 #### `Beacon.startRanging(region)` / `Beacon.stopRanging(region)`
 
 Starts or stops nearby beacon ranging with RSSI and distance.
@@ -303,6 +471,7 @@ Starts or stops region entry and exit monitoring.
 - `Beacon.onRegionStateChanged(callback)`
 - `Beacon.onRangingFailed(callback)`
 - `Beacon.onMonitoringFailed(callback)`
+- `Beacon.onScannerStateChanged(callback)`
 
 For hook users, runtime failures are already exposed through each hook's `error` field.
 
@@ -401,26 +570,6 @@ Add `POST_NOTIFICATIONS` to your runtime permission flow.
 ### Scanning stops after screen off on Xiaomi / HyperOS
 
 Review [Advanced Android](#advanced-android). `foregroundService: true` may not be enough on some OEM devices.
-
-### `configure()` appears to run twice at startup
-
-Guard your startup flow with a ref if your component can trigger overlapping starts:
-
-```ts
-const startingRef = useRef(false);
-
-const start = useCallback(async () => {
-  if (startingRef.current) return;
-  startingRef.current = true;
-  try {
-    await requestPermissions();
-    Beacon.configure({ foregroundService: true });
-    await startRanging();
-  } finally {
-    startingRef.current = false;
-  }
-}, [startRanging]);
-```
 
 ## License
 
