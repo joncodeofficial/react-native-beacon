@@ -43,13 +43,14 @@ This is the most important track before adding more surface area.
 
 ### Scanner and environment diagnostics
 
-- [ ] Add `Beacon.getScannerState()` or `Beacon.getEnvironmentState()`
-- [ ] Report actionable state such as:
+- [x] Add `Beacon.getEnvironmentState()`
+- [x] Report actionable state such as:
   - Bluetooth enabled / disabled
   - Location services enabled / disabled
   - Required permissions granted / missing
   - Background permission granted / missing
-- [ ] Consider `onScannerStateChanged()` for apps that need to react to runtime changes
+- [x] Add `onScannerStateChanged()` for apps that need to react to runtime changes
+- [x] Add a high-level `useBeaconEnvironment()` hook for React apps
 
 ### Test strategy
 
