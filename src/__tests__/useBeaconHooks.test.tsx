@@ -1,4 +1,5 @@
 import type {
+  BeaconEnvironmentState,
   BeaconFailureEvent,
   BeaconRegion,
   BeaconScanConfig,
@@ -13,6 +14,7 @@ const getMockJest = () =>
 
 type MockNativeModule = {
   checkPermissions: Mock<() => Promise<boolean>>;
+  getEnvironmentState: Mock<() => Promise<BeaconEnvironmentState>>;
   configure: Mock<(config: BeaconScanConfig) => void>;
   startRanging: Mock<(region: BeaconRegion) => Promise<void>>;
   stopRanging: Mock<(region: BeaconRegion) => Promise<void>>;
@@ -41,6 +43,7 @@ const createMockNativeModule = (): MockNativeModule => {
 
   return {
     checkPermissions: mockJest.fn<() => Promise<boolean>>(),
+    getEnvironmentState: mockJest.fn<() => Promise<BeaconEnvironmentState>>(),
     configure: mockJest.fn<(config: BeaconScanConfig) => void>(),
     startRanging: mockJest.fn<(region: BeaconRegion) => Promise<void>>(),
     stopRanging: mockJest.fn<(region: BeaconRegion) => Promise<void>>(),
@@ -93,8 +96,12 @@ getMockJest().mock('react-native', () => {
 
 const { act, renderHook, waitFor } = require('@testing-library/react-native');
 
-const { useBeaconMonitoring, useBeaconRanging, useMonitorThenRange } =
-  require('../index') as typeof import('../index');
+const {
+  useBeaconEnvironment,
+  useBeaconMonitoring,
+  useBeaconRanging,
+  useMonitorThenRange,
+} = require('../index') as typeof import('../index');
 
 const getMockNativeModule = (): MockNativeModule => {
   if (!globalThis.__beaconHookNativeModuleMock) {
@@ -126,6 +133,16 @@ describe('Beacon hooks', () => {
     mockListeners.clear();
 
     mockNativeModule.checkPermissions.mockResolvedValue(true);
+    mockNativeModule.getEnvironmentState.mockResolvedValue({
+      bluetoothEnabled: true,
+      locationServicesEnabled: true,
+      locationPermissionGranted: true,
+      bluetoothPermissionGranted: true,
+      backgroundPermissionGranted: true,
+      permissionsGranted: true,
+      canScanInForeground: true,
+      canScanInBackground: true,
+    });
     mockNativeModule.startRanging.mockResolvedValue();
     mockNativeModule.stopRanging.mockResolvedValue();
     mockNativeModule.startMonitoring.mockResolvedValue();
@@ -306,6 +323,91 @@ describe('Beacon hooks', () => {
     });
 
     expect(hook.result.current.error).toBeNull();
+
+    act(() => {
+      hook.unmount();
+    });
+  });
+
+  it('useBeaconEnvironment loads the initial snapshot and tracks live updates', async () => {
+    const mockNativeModule = getMockNativeModule();
+    const initialState: BeaconEnvironmentState = {
+      bluetoothEnabled: true,
+      locationServicesEnabled: true,
+      locationPermissionGranted: true,
+      bluetoothPermissionGranted: true,
+      backgroundPermissionGranted: false,
+      permissionsGranted: false,
+      canScanInForeground: true,
+      canScanInBackground: false,
+    };
+    const updatedState: BeaconEnvironmentState = {
+      ...initialState,
+      backgroundPermissionGranted: true,
+      permissionsGranted: true,
+      canScanInBackground: true,
+    };
+
+    mockNativeModule.getEnvironmentState.mockResolvedValue(initialState);
+
+    const hook = renderHook(() => useBeaconEnvironment());
+
+    expect(hook.result.current.isLoading).toBe(true);
+
+    await waitFor(() => {
+      expect(hook.result.current.state).toEqual(initialState);
+    });
+
+    expect(hook.result.current.isLoading).toBe(false);
+    expect(hook.result.current.error).toBeNull();
+
+    await emitMockEvent('onScannerStateChanged', updatedState);
+
+    expect(hook.result.current.state).toEqual(updatedState);
+    expect(mockNativeModule.addListener).toHaveBeenCalledWith(
+      'onScannerStateChanged'
+    );
+
+    act(() => {
+      hook.unmount();
+    });
+  });
+
+  it('useBeaconEnvironment exposes refresh for a fresh native snapshot', async () => {
+    const mockNativeModule = getMockNativeModule();
+    const firstState: BeaconEnvironmentState = {
+      bluetoothEnabled: false,
+      locationServicesEnabled: true,
+      locationPermissionGranted: true,
+      bluetoothPermissionGranted: true,
+      backgroundPermissionGranted: true,
+      permissionsGranted: true,
+      canScanInForeground: false,
+      canScanInBackground: false,
+    };
+    const secondState: BeaconEnvironmentState = {
+      ...firstState,
+      bluetoothEnabled: true,
+      canScanInForeground: true,
+      canScanInBackground: true,
+    };
+
+    mockNativeModule.getEnvironmentState
+      .mockResolvedValueOnce(firstState)
+      .mockResolvedValueOnce(secondState);
+
+    const hook = renderHook(() => useBeaconEnvironment());
+
+    await waitFor(() => {
+      expect(hook.result.current.state).toEqual(firstState);
+    });
+
+    await act(async () => {
+      await hook.result.current.refresh();
+    });
+
+    expect(hook.result.current.state).toEqual(secondState);
+    expect(mockNativeModule.getEnvironmentState).toHaveBeenCalledTimes(2);
 
     act(() => {
       hook.unmount();

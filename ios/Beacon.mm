@@ -1,4 +1,5 @@
 #import "Beacon.h"
+#import <CoreBluetooth/CoreBluetooth.h>
 #import <CoreLocation/CoreLocation.h>
 
 // ---------------------------------------------------------------------------
@@ -23,8 +24,9 @@
 // ---------------------------------------------------------------------------
 // Beacon module
 // ---------------------------------------------------------------------------
-@interface Beacon () <CLLocationManagerDelegate>
+@interface Beacon () <CLLocationManagerDelegate, CBCentralManagerDelegate>
 @property (nonatomic, strong) CLLocationManager *locationManager;
+@property (nonatomic, strong) CBCentralManager *centralManager;
 // Kalman filter config
 @property (nonatomic, assign) BOOL   kalmanEnabled;
 @property (nonatomic, assign) double kalmanQ;
@@ -34,6 +36,7 @@
 @property (nonatomic, strong) NSMutableDictionary<NSString *, CLBeaconIdentityConstraint *> *rangingConstraints;
 // identifier → CLBeaconRegion (for stopMonitoring)
 @property (nonatomic, strong) NSMutableDictionary<NSString *, CLBeaconRegion *> *monitoringRegions;
+@property (nonatomic, copy) NSDictionary *lastEnvironmentState;
 @end
 
 @implementation Beacon
@@ -52,6 +55,16 @@
         dispatch_block_t setup = ^{
             self->_locationManager          = [[CLLocationManager alloc] init];
             self->_locationManager.delegate = self;
+            self->_centralManager = [[CBCentralManager alloc] initWithDelegate:self
+                                                                         queue:nil
+                                                                       options:nil];
+            // Keep a cached snapshot so the JS event only fires when something
+            // user-actionable actually changed (permission, Bluetooth, etc.).
+            self->_lastEnvironmentState = [self currentEnvironmentState];
+            [[NSNotificationCenter defaultCenter] addObserver:self
+                                                     selector:@selector(handleAppDidBecomeActive)
+                                                         name:UIApplicationDidBecomeActiveNotification
+                                                       object:nil];
         };
         if ([NSThread isMainThread]) {
             setup();
@@ -66,7 +79,7 @@
 
 // Events emitted to JS
 - (NSArray<NSString *> *)supportedEvents {
-    return @[@"onBeaconsRanged", @"onRegionStateChanged", @"onRangingFailed", @"onMonitoringFailed"];
+    return @[@"onBeaconsRanged", @"onRegionStateChanged", @"onRangingFailed", @"onMonitoringFailed", @"onScannerStateChanged"];
 }
 
 // TurboModule JSI bridge — required by New Architecture
@@ -91,6 +104,13 @@
     BOOL granted = (status == kCLAuthorizationStatusAuthorizedAlways ||
                     status == kCLAuthorizationStatusAuthorizedWhenInUse);
     resolve(@(granted));
+}
+
+- (void)getEnvironmentState:(RCTPromiseResolveBlock)resolve
+                     reject:(RCTPromiseRejectBlock)reject {
+    NSDictionary *state = [self currentEnvironmentState];
+    self.lastEnvironmentState = state;
+    resolve(state);
 }
 
 // ---------------------------------------------------------------------------
@@ -322,6 +342,10 @@
     [super removeListeners:count];
 }
 
+- (void)handleAppDidBecomeActive {
+    [self emitEnvironmentStateChangedIfNeeded];
+}
+
 // ---------------------------------------------------------------------------
 // CLLocationManagerDelegate — ranging
 // ---------------------------------------------------------------------------
@@ -433,6 +457,7 @@ rangingBeaconsDidFailForConstraint:(CLBeaconIdentityConstraint *)constraint
 // Fires when the user grants or revokes location permission while the app is running.
 // Propagates a PERMISSION_DENIED failure to all active regions so the JS layer can react.
 - (void)locationManagerDidChangeAuthorization:(CLLocationManager *)manager {
+    [self emitEnvironmentStateChangedIfNeeded];
     CLAuthorizationStatus status = manager.authorizationStatus;
     if (status != kCLAuthorizationStatusDenied && status != kCLAuthorizationStatusRestricted) return;
 
@@ -473,9 +498,61 @@ rangingBeaconsDidFailForConstraint:(CLBeaconIdentityConstraint *)constraint
     }
 }
 
+- (void)centralManagerDidUpdateState:(CBCentralManager *)centralManager {
+    [self emitEnvironmentStateChangedIfNeeded];
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+- (NSDictionary *)currentEnvironmentState {
+    // Mirror the Android payload shape so apps can render one diagnostics UI
+    // across both platforms without branching on the event structure.
+    BOOL bluetoothEnabled = self.centralManager.state == CBManagerStatePoweredOn;
+    BOOL locationServicesEnabled = [CLLocationManager locationServicesEnabled];
+
+    CLAuthorizationStatus status;
+    if (@available(iOS 14.0, *)) {
+        status = self.locationManager.authorizationStatus;
+    } else {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+        status = [CLLocationManager authorizationStatus];
+#pragma clang diagnostic pop
+    }
+
+    BOOL locationPermissionGranted =
+        (status == kCLAuthorizationStatusAuthorizedAlways ||
+         status == kCLAuthorizationStatusAuthorizedWhenInUse);
+    BOOL backgroundPermissionGranted = status == kCLAuthorizationStatusAuthorizedAlways;
+    BOOL bluetoothPermissionGranted = YES;
+    BOOL permissionsGranted = locationPermissionGranted;
+    BOOL canScanInForeground =
+        bluetoothEnabled &&
+        locationServicesEnabled &&
+        locationPermissionGranted &&
+        bluetoothPermissionGranted;
+    BOOL canScanInBackground = canScanInForeground && backgroundPermissionGranted;
+
+    return @{
+        @"bluetoothEnabled": @(bluetoothEnabled),
+        @"locationServicesEnabled": @(locationServicesEnabled),
+        @"locationPermissionGranted": @(locationPermissionGranted),
+        @"bluetoothPermissionGranted": @(bluetoothPermissionGranted),
+        @"backgroundPermissionGranted": @(backgroundPermissionGranted),
+        @"permissionsGranted": @(permissionsGranted),
+        @"canScanInForeground": @(canScanInForeground),
+        @"canScanInBackground": @(canScanInBackground),
+    };
+}
+
+- (void)emitEnvironmentStateChangedIfNeeded {
+    NSDictionary *state = [self currentEnvironmentState];
+    if ([self.lastEnvironmentState isEqualToDictionary:state]) return;
+    self.lastEnvironmentState = state;
+    [self sendEventWithName:@"onScannerStateChanged" body:state];
+}
+
 - (void)sendRegionStateEvent:(CLBeaconRegion *)region state:(NSString *)state {
     [self sendEventWithName:@"onRegionStateChanged" body:@{
         @"region": [self regionMapForBeaconRegion:region],
@@ -543,6 +620,10 @@ rangingBeaconsDidFailForConstraint:(CLBeaconIdentityConstraint *)constraint
     state.estimate = state.estimate + gain * (measurement - state.estimate);
     state.errorCovariance = (1.0 - gain) * predictedError;
     return state.estimate;
+}
+
+- (void)dealloc {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
 @end

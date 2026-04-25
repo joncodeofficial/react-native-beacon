@@ -4,11 +4,13 @@ import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.bluetooth.BluetoothManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.location.LocationManager
 import android.net.Uri
 import android.os.Build
 import android.os.Handler
@@ -17,6 +19,7 @@ import android.os.PowerManager
 import android.provider.Settings
 import androidx.core.content.ContextCompat
 import com.facebook.react.bridge.Arguments
+import com.facebook.react.bridge.LifecycleEventListener
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReadableMap
@@ -36,8 +39,20 @@ data class KalmanState(
   var errorCovariance: Double,
 )
 
+data class EnvironmentState(
+  val bluetoothEnabled: Boolean,
+  val locationServicesEnabled: Boolean,
+  val locationPermissionGranted: Boolean,
+  val bluetoothPermissionGranted: Boolean,
+  val backgroundPermissionGranted: Boolean,
+  val permissionsGranted: Boolean,
+  val canScanInForeground: Boolean,
+  val canScanInBackground: Boolean,
+)
+
 class BeaconModule(reactContext: ReactApplicationContext) :
-  NativeBeaconSpec(reactContext) {
+  NativeBeaconSpec(reactContext),
+  LifecycleEventListener {
 
   private var beaconManager: BeaconManager? = null
   private var rangeNotifier: RangeNotifier? = null
@@ -49,6 +64,8 @@ class BeaconModule(reactContext: ReactApplicationContext) :
   private val kalmanStates = mutableMapOf<String, KalmanState>()
 
   private var wakeLock: PowerManager.WakeLock? = null
+  private var environmentReceiverRegistered: Boolean = false
+  private var lastEnvironmentState: EnvironmentState? = null
 
   // aggressiveBackground mode: watchdog + wake lock + forced LOW_LATENCY.
   // Only active when configure({ aggressiveBackground: true }) is called.
@@ -73,6 +90,14 @@ class BeaconModule(reactContext: ReactApplicationContext) :
     }
   }
 
+  // React to OS-level toggles that can instantly invalidate beacon scanning
+  // without any change in app code, such as Bluetooth or location services.
+  private val environmentReceiver = object : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+      emitEnvironmentStateChangedIfNeeded()
+    }
+  }
+
   // Watchdog: restarts BLE ranging every 20s to beat MIUI's ~20s scan-suspend timer.
   // MIUI/HyperOS force-suspends BLE scans after ~30s of screen-off even with
   // LOW_LATENCY mode and a foreground service. Restarting the scan resets the timer.
@@ -80,6 +105,14 @@ class BeaconModule(reactContext: ReactApplicationContext) :
   private var watchdogRunnable: Runnable? = null
   private val activeRangingRegions = java.util.concurrent.CopyOnWriteArrayList<Region>()
   private val activeMonitoringRegions = java.util.concurrent.CopyOnWriteArrayList<Region>()
+
+  init {
+    // Diagnostics are useful even before scanning starts, so subscribe as soon
+    // as the module is created and keep the last snapshot for diff-based emits.
+    reactApplicationContext.addLifecycleEventListener(this)
+    registerEnvironmentReceiver()
+    lastEnvironmentState = getEnvironmentStateSnapshot()
+  }
 
   // Initializes BeaconManager once with parsers and scan periods.
   // BeaconManager is an app-level singleton that outlives JS reloads. BeaconModule
@@ -114,31 +147,13 @@ class BeaconModule(reactContext: ReactApplicationContext) :
 
   // Checks permissions without requesting them — the developer's responsibility
   override fun checkPermissions(promise: Promise) {
-    val context = reactApplicationContext
+    promise.resolve(getEnvironmentStateSnapshot().permissionsGranted)
+  }
 
-    val hasLocation = ContextCompat.checkSelfPermission(
-      context, Manifest.permission.ACCESS_FINE_LOCATION
-    ) == PackageManager.PERMISSION_GRANTED
-
-    val hasBluetooth = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-      ContextCompat.checkSelfPermission(
-        context, Manifest.permission.BLUETOOTH_SCAN
-      ) == PackageManager.PERMISSION_GRANTED
-    } else {
-      true // Android < 12 does not require BLUETOOTH_SCAN
-    }
-
-    // Android 10+ requires ACCESS_BACKGROUND_LOCATION for background BLE scanning.
-    // Without it the OS silently delivers no ranging events when the app is backgrounded.
-    val hasBackgroundLocation = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-      ContextCompat.checkSelfPermission(
-        context, Manifest.permission.ACCESS_BACKGROUND_LOCATION
-      ) == PackageManager.PERMISSION_GRANTED
-    } else {
-      true // Android < 10 does not require ACCESS_BACKGROUND_LOCATION
-    }
-
-    promise.resolve(hasLocation && hasBluetooth && hasBackgroundLocation)
+  override fun getEnvironmentState(promise: Promise) {
+    val state = getEnvironmentStateSnapshot()
+    lastEnvironmentState = state
+    promise.resolve(environmentStateToWritableMap(state))
   }
 
   // Sets scan intervals and optionally enables the foreground service
@@ -287,6 +302,25 @@ class BeaconModule(reactContext: ReactApplicationContext) :
     }
     reactApplicationContext.registerReceiver(screenReceiver, filter)
     screenReceiverRegistered = true
+  }
+
+  private fun registerEnvironmentReceiver() {
+    if (environmentReceiverRegistered) return
+    // These broadcasts cover the Android toggles that most often explain
+    // "no beacons found" reports: Bluetooth and location services state.
+    val filter = IntentFilter().apply {
+      addAction(android.bluetooth.BluetoothAdapter.ACTION_STATE_CHANGED)
+      addAction(LocationManager.MODE_CHANGED_ACTION)
+      addAction(LocationManager.PROVIDERS_CHANGED_ACTION)
+    }
+    reactApplicationContext.registerReceiver(environmentReceiver, filter)
+    environmentReceiverRegistered = true
+  }
+
+  private fun unregisterEnvironmentReceiver() {
+    if (!environmentReceiverRegistered) return
+    try { reactApplicationContext.unregisterReceiver(environmentReceiver) } catch (_: Exception) {}
+    environmentReceiverRegistered = false
   }
 
   private fun unregisterScreenReceiver() {
@@ -540,6 +574,14 @@ class BeaconModule(reactContext: ReactApplicationContext) :
   override fun addListener(eventName: String) {}
   override fun removeListeners(count: Double) {}
 
+  override fun onHostResume() {
+    emitEnvironmentStateChangedIfNeeded()
+  }
+
+  override fun onHostPause() {}
+
+  override fun onHostDestroy() {}
+
   // Starts the BLE watchdog if not already running.
   // Fires every WATCHDOG_INTERVAL_MS and restarts all active ranging regions to
   // reset MIUI's BLE scan suspend timer before it hits the ~30s threshold.
@@ -575,6 +617,8 @@ class BeaconModule(reactContext: ReactApplicationContext) :
 
   // Release resources when the React Native bridge tears down (JS reload or app exit)
   override fun invalidate() {
+    reactApplicationContext.removeLifecycleEventListener(this)
+    unregisterEnvironmentReceiver()
     unregisterScreenReceiver()
     stopWatchdog()
     activeRangingRegions.clear()
@@ -600,6 +644,88 @@ class BeaconModule(reactContext: ReactApplicationContext) :
     val minor = if (map.hasKey("minor")) Identifier.fromInt(map.getInt("minor")) else null
 
     return Region(identifier, Identifier.parse(uuid), major, minor)
+  }
+
+  private fun getEnvironmentStateSnapshot(): EnvironmentState {
+    // Expose both granular flags and final readiness booleans so app UIs can
+    // either show a simple "ready / not ready" status or actionable detail.
+    val bluetoothEnabled = isBluetoothEnabled()
+    val locationServicesEnabled = isLocationServicesEnabled()
+    val locationPermissionGranted = hasPermission(Manifest.permission.ACCESS_FINE_LOCATION)
+    val bluetoothPermissionGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+      hasPermission(Manifest.permission.BLUETOOTH_SCAN)
+    } else {
+      true
+    }
+    val backgroundPermissionGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+      hasPermission(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+    } else {
+      true
+    }
+
+    val permissionsGranted =
+      locationPermissionGranted && bluetoothPermissionGranted && backgroundPermissionGranted
+    val canScanInForeground =
+      bluetoothEnabled &&
+      locationServicesEnabled &&
+      locationPermissionGranted &&
+      bluetoothPermissionGranted
+    val canScanInBackground = canScanInForeground && backgroundPermissionGranted
+
+    return EnvironmentState(
+      bluetoothEnabled = bluetoothEnabled,
+      locationServicesEnabled = locationServicesEnabled,
+      locationPermissionGranted = locationPermissionGranted,
+      bluetoothPermissionGranted = bluetoothPermissionGranted,
+      backgroundPermissionGranted = backgroundPermissionGranted,
+      permissionsGranted = permissionsGranted,
+      canScanInForeground = canScanInForeground,
+      canScanInBackground = canScanInBackground,
+    )
+  }
+
+  private fun hasPermission(permission: String): Boolean {
+    return ContextCompat.checkSelfPermission(
+      reactApplicationContext,
+      permission
+    ) == PackageManager.PERMISSION_GRANTED
+  }
+
+  private fun isBluetoothEnabled(): Boolean {
+    val bluetoothManager = reactApplicationContext.getSystemService(BluetoothManager::class.java)
+    return bluetoothManager?.adapter?.isEnabled == true
+  }
+
+  private fun isLocationServicesEnabled(): Boolean {
+    val locationManager = reactApplicationContext.getSystemService(LocationManager::class.java)
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+      return locationManager?.isLocationEnabled == true
+    }
+
+    @Suppress("DEPRECATION")
+    return locationManager?.isProviderEnabled(LocationManager.GPS_PROVIDER) == true ||
+      locationManager?.isProviderEnabled(LocationManager.NETWORK_PROVIDER) == true
+  }
+
+  private fun emitEnvironmentStateChangedIfNeeded() {
+    val nextState = getEnvironmentStateSnapshot()
+    if (nextState == lastEnvironmentState) return
+    lastEnvironmentState = nextState
+    if (!reactApplicationContext.hasActiveReactInstance()) return
+    sendEvent("onScannerStateChanged", environmentStateToWritableMap(nextState))
+  }
+
+  private fun environmentStateToWritableMap(state: EnvironmentState): WritableMap {
+    return Arguments.createMap().apply {
+      putBoolean("bluetoothEnabled", state.bluetoothEnabled)
+      putBoolean("locationServicesEnabled", state.locationServicesEnabled)
+      putBoolean("locationPermissionGranted", state.locationPermissionGranted)
+      putBoolean("bluetoothPermissionGranted", state.bluetoothPermissionGranted)
+      putBoolean("backgroundPermissionGranted", state.backgroundPermissionGranted)
+      putBoolean("permissionsGranted", state.permissionsGranted)
+      putBoolean("canScanInForeground", state.canScanInForeground)
+      putBoolean("canScanInBackground", state.canScanInBackground)
+    }
   }
 
   // Kalman filter — smooths noisy distance readings

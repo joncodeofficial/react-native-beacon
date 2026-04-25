@@ -1,9 +1,11 @@
 export {
   default,
   type Beacon,
+  type BeaconEnvironmentState,
   type BeaconFailureEvent,
   type BeaconsRangedEvent,
   type RegionStateChangedEvent,
+  type ScannerStateChangedEvent,
 } from './beaconApi';
 
 export type {
@@ -32,5 +34,10 @@ export {
   useMonitorThenRange,
   type UseMonitorThenRangeResult,
 } from './useMonitorThenRange';
+
+export {
+  useBeaconEnvironment,
+  type UseBeaconEnvironmentResult,
+} from './useBeaconEnvironment';
 
 export type { BeaconHookRegionState } from './hookUtils';

@@ -7,6 +7,19 @@ export interface BeaconRegion {
   minor?: number;
 }
 
+// Snapshot of everything an app typically needs to explain why scanning is or
+// is not ready right now, without forcing callers to infer it themselves.
+export interface BeaconEnvironmentState {
+  bluetoothEnabled: boolean;
+  locationServicesEnabled: boolean;
+  locationPermissionGranted: boolean;
+  bluetoothPermissionGranted: boolean;
+  backgroundPermissionGranted: boolean;
+  permissionsGranted: boolean;
+  canScanInForeground: boolean;
+  canScanInBackground: boolean;
+}
+
 export interface KalmanConfig {
   enabled: boolean;
   q?: number; // process noise — how much you trust movement (default 0.008)
@@ -49,6 +62,9 @@ export interface BeaconScanConfig {
 export interface Spec extends TurboModule {
   // Checks permissions without requesting them — the developer's responsibility
   checkPermissions(): Promise<boolean>;
+
+  // Returns a snapshot of device state relevant to beacon scanning
+  getEnvironmentState(): Promise<BeaconEnvironmentState>;
 
   // Sets scan intervals and optionally enables the foreground service
   configure(config: BeaconScanConfig): void;

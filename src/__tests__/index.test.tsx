@@ -1,14 +1,17 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import type {
+  BeaconEnvironmentState,
   BeaconRegion,
   BeaconScanConfig,
   BeaconFailureEvent,
   BeaconsRangedEvent,
   RegionStateChangedEvent,
+  ScannerStateChangedEvent,
 } from '../index';
 
 type MockNativeModule = {
   checkPermissions: jest.Mock<() => Promise<boolean>>;
+  getEnvironmentState: jest.Mock<() => Promise<BeaconEnvironmentState>>;
   configure: jest.Mock<(config: BeaconScanConfig) => void>;
   startRanging: jest.Mock<(region: BeaconRegion) => Promise<void>>;
   stopRanging: jest.Mock<(region: BeaconRegion) => Promise<void>>;
@@ -24,9 +27,11 @@ type MockNativeModule = {
 };
 
 declare global {
-  var __beaconNativeModuleMock: MockNativeModule | undefined;
+  var __beaconIndexNativeModuleMock: MockNativeModule | undefined;
 }
 
+// NativeEventEmitter is mocked at the public API layer so these tests verify
+// the contract that app code actually consumes rather than implementation detail.
 const mockListeners = new Map<
   string,
   Set<(...args: readonly unknown[]) => unknown>
@@ -34,6 +39,7 @@ const mockListeners = new Map<
 
 const createMockNativeModule = (): MockNativeModule => ({
   checkPermissions: jest.fn<() => Promise<boolean>>(),
+  getEnvironmentState: jest.fn<() => Promise<BeaconEnvironmentState>>(),
   configure: jest.fn<(config: BeaconScanConfig) => void>(),
   startRanging: jest.fn<(region: BeaconRegion) => Promise<void>>(),
   stopRanging: jest.fn<(region: BeaconRegion) => Promise<void>>(),
@@ -50,8 +56,8 @@ const createMockNativeModule = (): MockNativeModule => ({
 
 jest.mock('react-native', () => {
   const nativeModule =
-    globalThis.__beaconNativeModuleMock ?? createMockNativeModule();
-  globalThis.__beaconNativeModuleMock = nativeModule;
+    globalThis.__beaconIndexNativeModuleMock ?? createMockNativeModule();
+  globalThis.__beaconIndexNativeModuleMock = nativeModule;
 
   return {
     NativeEventEmitter: jest.fn((module: MockNativeModule) => ({
@@ -85,10 +91,10 @@ jest.mock('react-native', () => {
 import Beacon from '../index';
 
 const getMockNativeModule = (): MockNativeModule => {
-  if (!globalThis.__beaconNativeModuleMock) {
-    globalThis.__beaconNativeModuleMock = createMockNativeModule();
+  if (!globalThis.__beaconIndexNativeModuleMock) {
+    globalThis.__beaconIndexNativeModuleMock = createMockNativeModule();
   }
-  return globalThis.__beaconNativeModuleMock;
+  return globalThis.__beaconIndexNativeModuleMock;
 };
 
 const emitMockEvent = (eventName: string, payload: unknown) => {
@@ -111,6 +117,16 @@ describe('Beacon', () => {
     mockListeners.clear();
 
     mockNativeModule.checkPermissions.mockResolvedValue(true);
+    mockNativeModule.getEnvironmentState.mockResolvedValue({
+      bluetoothEnabled: true,
+      locationServicesEnabled: true,
+      locationPermissionGranted: true,
+      bluetoothPermissionGranted: true,
+      backgroundPermissionGranted: true,
+      permissionsGranted: true,
+      canScanInForeground: true,
+      canScanInBackground: true,
+    });
     mockNativeModule.startRanging.mockResolvedValue();
     mockNativeModule.stopRanging.mockResolvedValue();
     mockNativeModule.startMonitoring.mockResolvedValue();
@@ -131,6 +147,16 @@ describe('Beacon', () => {
       };
 
       await expect(Beacon.checkPermissions()).resolves.toBe(true);
+      await expect(Beacon.getEnvironmentState()).resolves.toEqual({
+        bluetoothEnabled: true,
+        locationServicesEnabled: true,
+        locationPermissionGranted: true,
+        bluetoothPermissionGranted: true,
+        backgroundPermissionGranted: true,
+        permissionsGranted: true,
+        canScanInForeground: true,
+        canScanInBackground: true,
+      });
       Beacon.configure(config);
       await expect(Beacon.startRanging(region)).resolves.toBeUndefined();
       await expect(Beacon.stopRanging(region)).resolves.toBeUndefined();
@@ -138,11 +164,43 @@ describe('Beacon', () => {
       await expect(Beacon.stopMonitoring(region)).resolves.toBeUndefined();
 
       expect(mockNativeModule.checkPermissions).toHaveBeenCalledTimes(1);
+      expect(mockNativeModule.getEnvironmentState).toHaveBeenCalledTimes(1);
       expect(mockNativeModule.configure).toHaveBeenCalledWith(config);
       expect(mockNativeModule.startRanging).toHaveBeenCalledWith(region);
       expect(mockNativeModule.stopRanging).toHaveBeenCalledWith(region);
       expect(mockNativeModule.startMonitoring).toHaveBeenCalledWith(region);
       expect(mockNativeModule.stopMonitoring).toHaveBeenCalledWith(region);
+    });
+
+    it('treats repeated identical configure calls as a no-op but still allows partial reconfiguration', () => {
+      const mockNativeModule = getMockNativeModule();
+      const firstConfig: BeaconScanConfig = {
+        scanPeriod: 1100,
+        backgroundScanPeriod: 10_000,
+        betweenScanPeriod: 0,
+        foregroundService: true,
+        foregroundServiceNotification: {
+          title: 'Beacon Example',
+        },
+      };
+      const partialUpdate: BeaconScanConfig = {
+        backgroundScanPeriod: 15_000,
+      };
+
+      Beacon.configure(firstConfig);
+      Beacon.configure(firstConfig);
+      Beacon.configure(partialUpdate);
+      Beacon.configure(partialUpdate);
+
+      expect(mockNativeModule.configure).toHaveBeenCalledTimes(2);
+      expect(mockNativeModule.configure).toHaveBeenNthCalledWith(
+        1,
+        firstConfig
+      );
+      expect(mockNativeModule.configure).toHaveBeenNthCalledWith(
+        2,
+        partialUpdate
+      );
     });
 
     it('delegates region queries and battery helpers to the native module', async () => {
@@ -320,6 +378,38 @@ describe('Beacon', () => {
       expect(mockNativeModule.addListener).toHaveBeenCalledWith(
         'onMonitoringFailed'
       );
+    });
+
+    it('delivers scanner state changes through the public subscription API', () => {
+      const mockNativeModule = getMockNativeModule();
+      const callback = jest.fn<(event: ScannerStateChangedEvent) => void>();
+      const event: ScannerStateChangedEvent = {
+        bluetoothEnabled: false,
+        locationServicesEnabled: true,
+        locationPermissionGranted: true,
+        bluetoothPermissionGranted: true,
+        backgroundPermissionGranted: false,
+        permissionsGranted: true,
+        canScanInForeground: false,
+        canScanInBackground: false,
+      };
+
+      const subscription = Beacon.onScannerStateChanged(callback);
+      emitMockEvent('onScannerStateChanged', event);
+
+      expect(callback).toHaveBeenCalledWith(event);
+      expect(mockNativeModule.addListener).toHaveBeenCalledWith(
+        'onScannerStateChanged'
+      );
+
+      subscription.remove();
+      emitMockEvent('onScannerStateChanged', {
+        ...event,
+        bluetoothEnabled: true,
+      });
+
+      expect(callback).toHaveBeenCalledTimes(1);
+      expect(mockNativeModule.removeListeners).toHaveBeenCalledWith(1);
     });
   });
 });
