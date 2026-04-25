@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.0](https://github.com/joncodeofficial/react-native-beacon-kit/compare/v0.7.3...v0.8.0) (2026-04-25)
+
+### Features
+
+* add environment state management and hooks for beacon scanning diagnostics ([418ca39](https://github.com/joncodeofficial/react-native-beacon-kit/commit/418ca390b3fb42da5ef4ba4370744e4565a04376))
+* enhance scanner and environment diagnostics with new methods and hooks ([4df4377](https://github.com/joncodeofficial/react-native-beacon-kit/commit/4df437742c70220df6f871d2bb2dc4fb343fb8f5))
+
 ## [0.7.3](https://github.com/joncodeofficial/react-native-beacon-kit/compare/v0.7.2...v0.7.3) (2026-04-23)
 
 ### Bug Fixes
