@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.0](https://github.com/joncodeofficial/react-native-beacon-kit/compare/v0.8.1...v0.9.0) (2026-05-01)
+
+### Features
+
+* add warnings for scanPeriod and backgroundScanPeriod in configure method ([3c71904](https://github.com/joncodeofficial/react-native-beacon-kit/commit/3c7190449387fe28c9c73e6916b0c27d245c529d))
+
 ## [0.8.1](https://github.com/joncodeofficial/react-native-beacon-kit/compare/v0.8.0...v0.8.1) (2026-05-01)
 
 ### Bug Fixes
