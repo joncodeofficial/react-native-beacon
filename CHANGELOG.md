@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.1](https://github.com/joncodeofficial/react-native-beacon-kit/compare/v0.8.0...v0.8.1) (2026-05-01)
+
+### Bug Fixes
+
+* **codegen:** inline all types in NativeBeacon spec for RN 0.83 compatibility ([2e49078](https://github.com/joncodeofficial/react-native-beacon-kit/commit/2e490789b62f53c91e0539e8761317a667b8154f))
+
 ## [0.8.0](https://github.com/joncodeofficial/react-native-beacon-kit/compare/v0.7.3...v0.8.0) (2026-04-25)
 
 ### Features
