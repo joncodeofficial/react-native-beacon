@@ -1,31 +1,104 @@
+// Types here are intentionally duplicated from types.ts.
+// The React Native Codegen parser does not follow imports — it only reads
+// declarations in this file. Keep both in sync; tsc enforces it in CI.
 import { TurboModuleRegistry, type TurboModule } from 'react-native';
-import type {
-  BeaconEnvironmentState,
-  BeaconRegion,
-  BeaconScanConfig,
-} from '../types';
 
 export interface Spec extends TurboModule {
   // Checks permissions without requesting them — the developer's responsibility
   checkPermissions(): Promise<boolean>;
 
   // Returns a snapshot of device state relevant to beacon scanning
-  getEnvironmentState(): Promise<BeaconEnvironmentState>;
+  getEnvironmentState(): Promise<
+    Readonly<{
+      bluetoothEnabled: boolean;
+      locationServicesEnabled: boolean;
+      locationPermissionGranted: boolean;
+      bluetoothPermissionGranted: boolean;
+      backgroundPermissionGranted: boolean;
+      permissionsGranted: boolean;
+      canScanInForeground: boolean;
+      canScanInBackground: boolean;
+    }>
+  >;
 
   // Sets scan intervals and optionally enables the foreground service
-  configure(config: BeaconScanConfig): void;
+  configure(
+    config: Readonly<{
+      scanPeriod?: number;
+      backgroundScanPeriod?: number;
+      betweenScanPeriod?: number;
+      foregroundService?: boolean;
+      foregroundServiceNotification?: Readonly<{
+        title?: string;
+        text?: string;
+      }>;
+      kalmanFilter?: Readonly<{
+        enabled: boolean;
+        q?: number;
+        r?: number;
+      }>;
+      filterTimeout?: number;
+      aggressiveBackground?: boolean;
+    }>
+  ): void;
 
   // Ranging: detects nearby beacons with RSSI and distance (~every 1s)
-  startRanging(region: BeaconRegion): Promise<void>;
-  stopRanging(region: BeaconRegion): Promise<void>;
+  startRanging(
+    region: Readonly<{
+      identifier: string;
+      uuid: string;
+      major?: number;
+      minor?: number;
+    }>
+  ): Promise<void>;
+  stopRanging(
+    region: Readonly<{
+      identifier: string;
+      uuid: string;
+      major?: number;
+      minor?: number;
+    }>
+  ): Promise<void>;
 
   // Monitoring: detects region entry/exit (battery efficient)
-  startMonitoring(region: BeaconRegion): Promise<void>;
-  stopMonitoring(region: BeaconRegion): Promise<void>;
+  startMonitoring(
+    region: Readonly<{
+      identifier: string;
+      uuid: string;
+      major?: number;
+      minor?: number;
+    }>
+  ): Promise<void>;
+  stopMonitoring(
+    region: Readonly<{
+      identifier: string;
+      uuid: string;
+      major?: number;
+      minor?: number;
+    }>
+  ): Promise<void>;
 
   // Returns the currently active ranging / monitoring regions
-  getRangedRegions(): Promise<BeaconRegion[]>;
-  getMonitoredRegions(): Promise<BeaconRegion[]>;
+  getRangedRegions(): Promise<
+    ReadonlyArray<
+      Readonly<{
+        identifier: string;
+        uuid: string;
+        major?: number;
+        minor?: number;
+      }>
+    >
+  >;
+  getMonitoredRegions(): Promise<
+    ReadonlyArray<
+      Readonly<{
+        identifier: string;
+        uuid: string;
+        major?: number;
+        minor?: number;
+      }>
+    >
+  >;
 
   // Battery optimization — required for reliable scanning with screen off
   isIgnoringBatteryOptimizations(): Promise<boolean>;

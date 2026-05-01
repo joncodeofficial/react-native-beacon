@@ -76,11 +76,11 @@ const Beacon = {
   },
 
   getRangedRegions(): Promise<BeaconRegion[]> {
-    return NativeBeacon.getRangedRegions();
+    return NativeBeacon.getRangedRegions() as Promise<BeaconRegion[]>;
   },
 
   getMonitoredRegions(): Promise<BeaconRegion[]> {
-    return NativeBeacon.getMonitoredRegions();
+    return NativeBeacon.getMonitoredRegions() as Promise<BeaconRegion[]>;
   },
 
   isIgnoringBatteryOptimizations(): Promise<boolean> {
