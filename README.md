@@ -28,11 +28,25 @@ If you are building a screen in React, start with the hooks API.
 
 ## Installation
 
+### React Native (bare)
+
 ```sh
 npm install react-native-beacon-kit
 ```
 
-### Expo managed workflow
+Then for iOS:
+
+```sh
+cd ios && pod install
+```
+
+### Expo bare workflow
+
+```sh
+npx expo install react-native-beacon-kit
+```
+
+Add the plugin to your `app.json` or `app.config.js`:
 
 ```json
 {
@@ -59,7 +73,13 @@ Optional iOS background location capability:
 }
 ```
 
-The Expo plugin adds the required native permissions and default iOS location usage strings. It does not request runtime permissions for you.
+Then run prebuild to apply the native changes and install iOS pods:
+
+```sh
+npx expo prebuild
+```
+
+The plugin automatically adds the required Android permissions, iOS `Info.plist` usage strings, and — if `iosBackgroundLocation` is enabled — the background location mode. It does not request runtime permissions for you.
 
 ## Quick start (High-level API)
 
@@ -259,6 +279,8 @@ Important notes:
 
 ### iOS
 
+If you are using the Expo plugin, these keys are added automatically by `npx expo prebuild`. No manual changes to `Info.plist` are needed.
+
 If you are configuring iOS manually, add these keys to `Info.plist`:
 
 ```xml
@@ -268,7 +290,7 @@ If you are configuring iOS manually, add these keys to `Info.plist`:
 <string>This app uses your location to detect nearby beacons.</string>
 ```
 
-If you need background region monitoring, enable **Location updates** in your target's Background Modes capability, or set `iosBackgroundLocation: true` in the Expo plugin.
+For background region monitoring, enable **Location updates** in your target's Background Modes capability. If you are using the Expo plugin, set `iosBackgroundLocation: true` instead and let prebuild handle it.
 
 ## Platform behavior and limits
 
