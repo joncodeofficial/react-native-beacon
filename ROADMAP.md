@@ -106,42 +106,6 @@ The library supports background scanning, but there is no guide explaining what 
 
 ---
 
-## Longer-term ideas
-
-### Trilateration
-
-Given 3+ beacons with known positions, estimate the user's `(x, y)` location.
-
-```ts
-const position = Beacon.estimatePosition(beacons, beaconMap);
-// { x: 12.4, y: 8.1, confidence: 0.87 }
-```
-
-### Zone detection
-
-Map beacon identifiers to named zones and emit transitions between them.
-
-```ts
-Beacon.configure({
-  zones: [
-    { name: 'entrance', beacons: [{ major: 1, minor: 1 }] },
-    {
-      name: 'hall-a',
-      beacons: [
-        { major: 1, minor: 2 },
-        { major: 1, minor: 3 },
-      ],
-    },
-  ],
-});
-
-Beacon.onZoneChanged((event) => {
-  // event.zone
-});
-```
-
----
-
 ## Release checklist
 
 - [ ] Add iOS build validation in CI
