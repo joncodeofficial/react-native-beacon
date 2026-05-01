@@ -100,7 +100,6 @@ The library supports background scanning, but there is no guide explaining what 
 
 ## API and core improvements
 
-- [ ] Region-scoped subscription helpers such as `Beacon.onBeaconsRanged('zone-a', callback)`
 - [ ] Moving average filter as an alternative to Kalman
 - [ ] `useBeaconMap(beaconMap)`
 
