@@ -47,6 +47,22 @@ const Beacon = {
   },
 
   configure(config: BeaconScanConfig): void {
+    if (__DEV__) {
+      if (config.scanPeriod !== undefined && config.scanPeriod < 1100) {
+        console.warn(
+          `[BeaconKit] scanPeriod ${config.scanPeriod}ms is below the 1100ms minimum — AltBeacon will clamp it.`
+        );
+      }
+      if (
+        config.backgroundScanPeriod !== undefined &&
+        config.backgroundScanPeriod < 10000
+      ) {
+        console.warn(
+          `[BeaconKit] backgroundScanPeriod ${config.backgroundScanPeriod}ms is below 10000ms — risks Android BLE scan throttle.`
+        );
+      }
+    }
+
     // Treat configure() as merged global state so repeated calls with the same
     // effective config are a no-op, while partial updates still work.
     const nextConfig = mergeBeaconConfig(configuredState, config);
