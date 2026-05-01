@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 import type { BeaconRegion } from '../index';
-import { normalizeBeaconError, regionsMatch } from '../hookUtils';
+import { normalizeBeaconError, regionsMatch } from '../utils/beaconUtils';
 
 describe('hookUtils', () => {
   const region: BeaconRegion = {

@@ -1,57 +1,14 @@
 import { NativeEventEmitter } from 'react-native';
-import NativeBeacon from './NativeBeacon';
+import NativeBeacon from '../native/NativeBeacon';
 import type {
   BeaconEnvironmentState,
+  BeaconFailureEvent,
+  BeaconsRangedEvent,
   BeaconRegion,
   BeaconScanConfig,
-  ForegroundServiceNotificationConfig,
-  KalmanConfig,
-} from './NativeBeacon';
-
-export type {
-  BeaconEnvironmentState,
-  BeaconRegion,
-  BeaconScanConfig,
-  ForegroundServiceNotificationConfig,
-  KalmanConfig,
-};
-
-export interface Beacon {
-  uuid: string;
-  major: number;
-  minor: number;
-  rssi: number;
-  /** Kalman-filtered distance in meters (equals rawDistance when filter is disabled). */
-  distance: number;
-  /** Raw unfiltered distance from AltBeacon. Useful for calibration and debugging. */
-  rawDistance: number;
-  txPower: number;
-  /** @warning May be randomized on Android 10+ — use uuid + major + minor as unique identifier instead. */
-  macAddress: string;
-  timestamp: number;
-}
-
-export interface BeaconsRangedEvent {
-  region: BeaconRegion;
-  beacons: Beacon[];
-}
-
-export interface RegionStateChangedEvent {
-  region: BeaconRegion;
-  state: 'inside' | 'outside';
-}
-
-export interface BeaconFailureEvent {
-  region?: BeaconRegion;
-  code: string;
-  message: string;
-  nativeCode?: number;
-  domain?: string;
-}
-
-// Keep one payload shape for both snapshot reads and live updates so apps can
-// render diagnostics UI without maintaining separate types.
-export type ScannerStateChangedEvent = BeaconEnvironmentState;
+  RegionStateChangedEvent,
+  ScannerStateChangedEvent,
+} from '../types';
 
 const emitter = new NativeEventEmitter(NativeBeacon);
 let hasConfigured = false;

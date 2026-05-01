@@ -1,15 +1,12 @@
 import { useEffect, useState } from 'react';
-import Beacon from './beaconApi';
-import { regionsMatch, type BeaconHookRegionState } from './hookUtils';
-import {
-  useBeaconController,
-  type UseBeaconBaseResult,
-  type UseBeaconOptions,
-} from './useBeaconController';
-
-export interface UseBeaconMonitoringResult extends UseBeaconBaseResult {
-  regionState: BeaconHookRegionState;
-}
+import Beacon from '../api/Beacon';
+import type {
+  BeaconHookRegionState,
+  UseBeaconMonitoringResult,
+  UseBeaconOptions,
+} from '../types';
+import { regionsMatch } from '../utils/beaconUtils';
+import { useBeaconController } from './useBeaconController';
 
 export const useBeaconMonitoring = ({
   region,

@@ -1,6 +1,4 @@
-import type { BeaconFailureEvent, BeaconRegion } from './index';
-
-export type BeaconHookRegionState = 'unknown' | 'inside' | 'outside';
+import type { BeaconFailureEvent, BeaconRegion } from '../types';
 
 const normalizeUuid = (value: string | undefined) => value?.toLowerCase();
 

@@ -1,22 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { BeaconFailureEvent, BeaconRegion } from './beaconApi';
-import { normalizeBeaconError } from './hookUtils';
-
-export interface UseBeaconOptions {
-  region: BeaconRegion;
-  autoStart?: boolean;
-  stopOnUnmount?: boolean;
-}
-
-export interface UseBeaconBaseResult {
-  error: BeaconFailureEvent | null;
-  isActive: boolean;
-  isStarting: boolean;
-  isStopping: boolean;
-  clearError: () => void;
-  start: () => Promise<void>;
-  stop: () => Promise<void>;
-}
+import type { BeaconFailureEvent, BeaconRegion } from '../types';
+import { normalizeBeaconError } from '../utils/beaconUtils';
 
 interface UseBeaconControllerOptions {
   autoStart: boolean;

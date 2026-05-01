@@ -1,12 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import Beacon, { type BeaconEnvironmentState } from './beaconApi';
-
-export interface UseBeaconEnvironmentResult {
-  state: BeaconEnvironmentState | null;
-  isLoading: boolean;
-  error: Error | null;
-  refresh: () => Promise<void>;
-}
+import Beacon from '../api/Beacon';
+import type {
+  BeaconEnvironmentState,
+  UseBeaconEnvironmentResult,
+} from '../types';
 
 export const useBeaconEnvironment = (): UseBeaconEnvironmentResult => {
   const [state, setState] = useState<BeaconEnvironmentState | null>(null);

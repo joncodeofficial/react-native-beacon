@@ -1,21 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import Beacon, { type Beacon as BeaconReading } from './beaconApi';
-import {
-  normalizeBeaconError,
-  regionsMatch,
-  type BeaconHookRegionState,
-} from './hookUtils';
-import {
-  useBeaconController,
-  type UseBeaconBaseResult,
-  type UseBeaconOptions,
-} from './useBeaconController';
-
-export interface UseMonitorThenRangeResult extends UseBeaconBaseResult {
-  beacons: BeaconReading[];
-  regionState: BeaconHookRegionState;
-  isRanging: boolean;
-}
+import Beacon from '../api/Beacon';
+import type {
+  Beacon as BeaconReading,
+  BeaconHookRegionState,
+  UseBeaconOptions,
+  UseMonitorThenRangeResult,
+} from '../types';
+import { normalizeBeaconError, regionsMatch } from '../utils/beaconUtils';
+import { useBeaconController } from './useBeaconController';
 
 export const useMonitorThenRange = ({
   region,
