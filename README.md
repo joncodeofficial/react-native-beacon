@@ -14,6 +14,7 @@ iBeacon and AltBeacon for React Native with a hooks-first API, New Architecture 
 - Optional Kalman filter for more stable distance readings
 - Environment diagnostics for Bluetooth, location services, and permissions
 - Expo plugin included
+- Compatible with Android 16 KB page size (Android 15+)
 
 ## When to use each API
 
