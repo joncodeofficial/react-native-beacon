@@ -571,6 +571,30 @@ Beacon.openAutostartSettings();
 
 Call `openAutostartSettings()` only from a user-initiated action, not during app startup.
 
+## Background wake-up
+
+When the OS kills your app and a beacon event brings it back, the JS bundle starts completely fresh — no React state, no in-memory store. You need to restore any context your app needs before handling the event.
+
+### Android
+
+With `foregroundService: true`, the process usually stays alive and wake-up restarts are rare. If the user force-kills the app or the OS terminates it under memory pressure, the foreground service is also stopped and no further scanning happens until the app is launched again.
+
+### iOS
+
+Core Location can relaunch your app in the background when a monitored region is crossed. The execution window is short (~5–10 seconds). Check `launchOptions` in your app entry point to detect this case:
+
+```ts
+// AppDelegate or your root component on mount
+const isBackgroundLaunch =
+  launchOptions?.[LocationLaunchOptionsKey.region] != null;
+```
+
+If you are using `useMonitorThenRange`, start monitoring as early as possible — before any async work — so the region state is established within the execution window.
+
+### State hydration
+
+React component state does not survive a background relaunch. If your app needs to know about previous beacon context (last known region state, last seen beacon), persist it to `AsyncStorage` or `MMKV` and read it back on startup before your beacon logic runs.
+
 ## Troubleshooting
 
 ### `SecurityException` on fresh install (Android SDK 34+)
