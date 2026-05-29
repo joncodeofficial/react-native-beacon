@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import Beacon from '../api/Beacon';
+import { useContext, useEffect, useRef, useState } from 'react';
+import { BeaconContext } from '../context/BeaconContext';
 import type {
   Beacon as BeaconReading,
   BeaconHookRegionState,
@@ -19,16 +19,17 @@ export const useMonitorThenRange = ({
     useState<BeaconHookRegionState>('unknown');
   const [isRanging, setIsRanging] = useState(false);
 
+  const beacon = useContext(BeaconContext);
   const rangeTransitionRef = useRef(false);
 
   const controller = useBeaconController({
     autoStart,
     stopOnUnmount,
     region,
-    startOperation: () => Beacon.startMonitoring(region),
+    startOperation: () => beacon.startMonitoring(region),
     stopOperation: async () => {
-      await Beacon.stopMonitoring(region);
-      await Beacon.stopRanging(region);
+      await beacon.stopMonitoring(region);
+      await beacon.stopRanging(region);
       setBeacons([]);
       setRegionState('unknown');
       setIsRanging(false);
@@ -41,13 +42,13 @@ export const useMonitorThenRange = ({
   const regionKey = `${region.identifier}:${region.uuid}:${region.major ?? ''}:${region.minor ?? ''}`;
 
   useEffect(() => {
-    const rangingSubscription = Beacon.onBeaconsRanged((event) => {
+    const rangingSubscription = beacon.onBeaconsRanged((event) => {
       if (!regionsMatch(event.region, region)) return;
       clearError();
       setBeacons(event.beacons);
     });
 
-    const stateSubscription = Beacon.onRegionStateChanged((event) => {
+    const stateSubscription = beacon.onRegionStateChanged((event) => {
       if (!regionsMatch(event.region, region)) return;
 
       clearError();
@@ -57,7 +58,8 @@ export const useMonitorThenRange = ({
       rangeTransitionRef.current = true;
 
       if (event.state === 'inside') {
-        Beacon.startRanging(region)
+        beacon
+          .startRanging(region)
           .then(() => {
             setIsRanging(true);
           })
@@ -72,7 +74,8 @@ export const useMonitorThenRange = ({
         return;
       }
 
-      Beacon.stopRanging(region)
+      beacon
+        .stopRanging(region)
         .then(() => {
           setBeacons([]);
           setIsRanging(false);
@@ -87,12 +90,12 @@ export const useMonitorThenRange = ({
         });
     });
 
-    const rangingFailedSubscription = Beacon.onRangingFailed((event) => {
+    const rangingFailedSubscription = beacon.onRangingFailed((event) => {
       if (event.region && !regionsMatch(event.region, region)) return;
       setError(event);
     });
 
-    const monitoringFailedSubscription = Beacon.onMonitoringFailed((event) => {
+    const monitoringFailedSubscription = beacon.onMonitoringFailed((event) => {
       if (event.region && !regionsMatch(event.region, region)) return;
       setError(event);
     });

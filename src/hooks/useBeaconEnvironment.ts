@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
-import Beacon from '../api/Beacon';
+import { useCallback, useContext, useEffect, useState } from 'react';
+import { BeaconContext } from '../context/BeaconContext';
 import type {
   BeaconEnvironmentState,
   UseBeaconEnvironmentResult,
 } from '../types';
 
 export const useBeaconEnvironment = (): UseBeaconEnvironmentResult => {
+  const beacon = useContext(BeaconContext);
   const [state, setState] = useState<BeaconEnvironmentState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -16,7 +17,7 @@ export const useBeaconEnvironment = (): UseBeaconEnvironmentResult => {
     setError(null);
 
     try {
-      const nextState = await Beacon.getEnvironmentState();
+      const nextState = await beacon.getEnvironmentState();
       setState(nextState);
     } catch (refreshError) {
       const nextError =
@@ -28,12 +29,12 @@ export const useBeaconEnvironment = (): UseBeaconEnvironmentResult => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [beacon]);
 
   useEffect(() => {
     refresh().catch(() => {});
 
-    const subscription = Beacon.onScannerStateChanged((nextState) => {
+    const subscription = beacon.onScannerStateChanged((nextState) => {
       setError(null);
       setState(nextState);
       setIsLoading(false);
@@ -42,7 +43,7 @@ export const useBeaconEnvironment = (): UseBeaconEnvironmentResult => {
     return () => {
       subscription.remove();
     };
-  }, [refresh]);
+  }, [beacon, refresh]);
 
   return {
     state,

@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import Beacon from '../api/Beacon';
+import { useContext, useEffect, useState } from 'react';
+import { BeaconContext } from '../context/BeaconContext';
 import type {
   BeaconHookRegionState,
   UseBeaconMonitoringResult,
@@ -13,6 +13,7 @@ export const useBeaconMonitoring = ({
   autoStart = false,
   stopOnUnmount = true,
 }: UseBeaconOptions): UseBeaconMonitoringResult => {
+  const beacon = useContext(BeaconContext);
   const [regionState, setRegionState] =
     useState<BeaconHookRegionState>('unknown');
 
@@ -20,9 +21,9 @@ export const useBeaconMonitoring = ({
     autoStart,
     stopOnUnmount,
     region,
-    startOperation: () => Beacon.startMonitoring(region),
+    startOperation: () => beacon.startMonitoring(region),
     stopOperation: async () => {
-      await Beacon.stopMonitoring(region);
+      await beacon.stopMonitoring(region);
       setRegionState('unknown');
     },
     startErrorCode: 'MONITORING_ERROR',
@@ -33,13 +34,13 @@ export const useBeaconMonitoring = ({
   const regionKey = `${region.identifier}:${region.uuid}:${region.major ?? ''}:${region.minor ?? ''}`;
 
   useEffect(() => {
-    const stateSubscription = Beacon.onRegionStateChanged((event) => {
+    const stateSubscription = beacon.onRegionStateChanged((event) => {
       if (!regionsMatch(event.region, region)) return;
       clearError();
       setRegionState(event.state);
     });
 
-    const failureSubscription = Beacon.onMonitoringFailed((event) => {
+    const failureSubscription = beacon.onMonitoringFailed((event) => {
       if (event.region && !regionsMatch(event.region, region)) return;
       setError(event);
     });

@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import Beacon from '../api/Beacon';
+import { useContext, useEffect, useState } from 'react';
+import { BeaconContext } from '../context/BeaconContext';
 import type {
   Beacon as BeaconReading,
   UseBeaconOptions,
@@ -13,15 +13,16 @@ export const useBeaconRanging = ({
   autoStart = false,
   stopOnUnmount = true,
 }: UseBeaconOptions): UseBeaconRangingResult => {
+  const beacon = useContext(BeaconContext);
   const [beacons, setBeacons] = useState<BeaconReading[]>([]);
 
   const controller = useBeaconController({
     autoStart,
     stopOnUnmount,
     region,
-    startOperation: () => Beacon.startRanging(region),
+    startOperation: () => beacon.startRanging(region),
     stopOperation: async () => {
-      await Beacon.stopRanging(region);
+      await beacon.stopRanging(region);
       setBeacons([]);
     },
     startErrorCode: 'RANGING_ERROR',
@@ -32,13 +33,13 @@ export const useBeaconRanging = ({
   const regionKey = `${region.identifier}:${region.uuid}:${region.major ?? ''}:${region.minor ?? ''}`;
 
   useEffect(() => {
-    const rangingSubscription = Beacon.onBeaconsRanged((event) => {
+    const rangingSubscription = beacon.onBeaconsRanged((event) => {
       if (!regionsMatch(event.region, region)) return;
       clearError();
       setBeacons(event.beacons);
     });
 
-    const failureSubscription = Beacon.onRangingFailed((event) => {
+    const failureSubscription = beacon.onRangingFailed((event) => {
       if (event.region && !regionsMatch(event.region, region)) return;
       setError(event);
     });
