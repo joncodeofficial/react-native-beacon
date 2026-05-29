@@ -301,11 +301,22 @@ For background region monitoring, enable **Location updates** in your target's B
 - OEM power management can still affect reliability with the screen off
 - If you need the strongest background behavior on restrictive devices, see [Advanced Android](#advanced-android)
 
+**Behavior by API level:**
+
+| API level | What changes |
+| --------- | ------------ |
+| Android 10 (API 29) | `ACCESS_BACKGROUND_LOCATION` must be requested separately at runtime |
+| Android 12 (API 31) | `BLUETOOTH_SCAN` and `BLUETOOTH_CONNECT` are required in addition to location |
+| Android 13 (API 33) | `POST_NOTIFICATIONS` required to show the foreground service notification |
+| Android 14 (API 34) | `FOREGROUND_SERVICE_LOCATION` required for location-type foreground services; calling `configure({ foregroundService: true })` before permissions are granted throws a `SecurityException` |
+
 ### iOS
 
 - Continuous background ranging is not supported
 - Use monitoring to wake the app, then start ranging during the available execution window
 - Android-only options such as `foregroundService`, `aggressiveBackground`, `scanPeriod`, `backgroundScanPeriod`, and `betweenScanPeriod` are ignored on iOS
+- **Region limit:** CoreLocation allows a maximum of 20 simultaneously monitored regions per app. If you register more than 20, iOS silently drops the extras. Prefer fewer, broader regions where possible.
+- **Simulator:** the iOS Simulator does not have Bluetooth hardware. You need a physical device to scan for beacons.
 
 Typical iOS background pattern:
 
@@ -617,6 +628,37 @@ Add `POST_NOTIFICATIONS` to your runtime permission flow.
 ### Scanning stops after screen off on Xiaomi / HyperOS
 
 Review [Advanced Android](#advanced-android). `foregroundService: true` may not be enough on some OEM devices.
+
+## Validated hardware
+
+The following combinations have been tested against this library. If you validate additional hardware, contributions to this table are welcome.
+
+### Beacon vendors
+
+| Vendor | Protocol | Tested |
+| ------ | -------- | ------ |
+| Estimote | iBeacon | Pending |
+| Kontakt.io | iBeacon | Pending |
+| Minew | iBeacon | Pending |
+
+### Android versions
+
+| Android version | API level | Tested |
+| --------------- | --------- | ------ |
+| Android 12 | 31 | Pending |
+| Android 13 | 33 | Pending |
+| Android 14 | 34 | Pending |
+| Android 15 | 35 | Pending |
+
+### iOS versions
+
+| iOS version | Tested |
+| ----------- | ------ |
+| iOS 16 | Pending |
+| iOS 17 | Pending |
+| iOS 18 | Pending |
+
+This matrix will be updated as validation is completed. Releases that include real-device validation will note it in the [CHANGELOG](./CHANGELOG.md).
 
 ## License
 

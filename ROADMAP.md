@@ -17,7 +17,7 @@ This is the most important track before adding more surface area.
 ### Test strategy
 
 - [ ] Add stronger cross-platform confidence beyond JS contract tests
-- [ ] Add a documented real-device validation matrix for releases
+- [x] Add a documented real-device validation matrix for releases
 
 ---
 
@@ -49,7 +49,7 @@ Work required:
   - discriminated union such as `IBeaconReading | EddystoneUidReading`
   - avoid forcing Eddystone into the current `uuid / major / minor` shape
 - [ ] Update region/filter types to support Eddystone namespace and instance filtering
-- [ ] Document the platform story clearly:
+- [x] Document the platform story clearly:
   - Android support expectations
   - iOS limitations or alternative approach if parity is not possible
 
