@@ -1,4 +1,8 @@
-import type { BeaconFailureEvent, BeaconRegion } from '../types';
+import type {
+  BeaconFailureEvent,
+  BeaconRegion,
+  EddystoneRegion,
+} from '../types';
 
 const normalizeUuid = (value: string | undefined) => value?.toLowerCase();
 
@@ -17,23 +21,33 @@ const isBeaconFailureEvent = (
 };
 
 export const regionsMatch = (
-  left: BeaconRegion | undefined,
-  right: BeaconRegion | undefined
+  left: BeaconRegion | EddystoneRegion | undefined,
+  right: BeaconRegion | EddystoneRegion | undefined
 ) => {
   if (!left || !right) return false;
+  if (left.identifier !== right.identifier) return false;
 
-  return (
-    left.identifier === right.identifier &&
-    normalizeUuid(left.uuid) === normalizeUuid(right.uuid) &&
-    left.major === right.major &&
-    left.minor === right.minor
-  );
+  if ('uuid' in left && 'uuid' in right) {
+    return (
+      normalizeUuid(left.uuid) === normalizeUuid(right.uuid) &&
+      left.major === right.major &&
+      left.minor === right.minor
+    );
+  }
+
+  if ('namespace' in left && 'namespace' in right) {
+    return (
+      left.namespace === right.namespace && left.instance === right.instance
+    );
+  }
+
+  return false;
 };
 
 export const normalizeBeaconError = (
   error: unknown,
   code: string,
-  region?: BeaconRegion
+  region?: BeaconRegion | EddystoneRegion
 ): BeaconFailureEvent => {
   if (isBeaconFailureEvent(error)) {
     return {

@@ -5,13 +5,15 @@ import type {
   BeaconFailureEvent,
   BeaconsRangedEvent,
   BeaconRegion,
+  EddystoneRangedEvent,
+  EddystoneRegion,
   RegionStateChangedEvent,
   ScannerStateChangedEvent,
 } from '../types';
 
 export interface BeaconAdapter {
-  startRanging(region: BeaconRegion): Promise<void>;
-  stopRanging(region: BeaconRegion): Promise<void>;
+  startRanging(region: BeaconRegion | EddystoneRegion): Promise<void>;
+  stopRanging(region: BeaconRegion | EddystoneRegion): Promise<void>;
   startMonitoring(region: BeaconRegion): Promise<void>;
   stopMonitoring(region: BeaconRegion): Promise<void>;
   getEnvironmentState(): Promise<BeaconEnvironmentState>;
@@ -24,6 +26,9 @@ export interface BeaconAdapter {
     remove(): void;
   };
   onScannerStateChanged(cb: (event: ScannerStateChangedEvent) => void): {
+    remove(): void;
+  };
+  onEddystoneRanged(cb: (event: EddystoneRangedEvent) => void): {
     remove(): void;
   };
 }

@@ -79,7 +79,7 @@
 
 // Events emitted to JS
 - (NSArray<NSString *> *)supportedEvents {
-    return @[@"onBeaconsRanged", @"onRegionStateChanged", @"onRangingFailed", @"onMonitoringFailed", @"onScannerStateChanged"];
+    return @[@"onBeaconsRanged", @"onRegionStateChanged", @"onRangingFailed", @"onMonitoringFailed", @"onScannerStateChanged", @"onEddystoneRanged"];
 }
 
 // TurboModule JSI bridge — required by New Architecture

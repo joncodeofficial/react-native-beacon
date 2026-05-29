@@ -8,6 +8,9 @@ export type {
   BeaconHookRegionState,
   BeaconRegion,
   BeaconScanConfig,
+  EddystoneRangedEvent,
+  EddystoneRegion,
+  EddystoneUidReading,
   ForegroundServiceNotificationConfig,
   KalmanConfig,
   RegionStateChangedEvent,
@@ -17,12 +20,15 @@ export type {
   UseBeaconMonitoringResult,
   UseBeaconOptions,
   UseBeaconRangingResult,
+  UseEddystoneOptions,
+  UseEddystoneRangingResult,
   UseMonitorThenRangeResult,
 } from './types';
 
 export { useBeaconEnvironment } from './hooks/useBeaconEnvironment';
 export { useBeaconMonitoring } from './hooks/useBeaconMonitoring';
 export { useBeaconRanging } from './hooks/useBeaconRanging';
+export { useEddystoneRanging } from './hooks/useEddystoneRanging';
 export { useMonitorThenRange } from './hooks/useMonitorThenRange';
 
 export { MockBeaconProvider } from './mock/MockBeaconProvider';

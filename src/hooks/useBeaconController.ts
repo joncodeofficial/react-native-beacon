@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { BeaconFailureEvent, BeaconRegion } from '../types';
+import type {
+  BeaconFailureEvent,
+  BeaconRegion,
+  EddystoneRegion,
+} from '../types';
 import { normalizeBeaconError } from '../utils/beaconUtils';
 
 interface UseBeaconControllerOptions {
   autoStart: boolean;
   stopOnUnmount: boolean;
-  region: BeaconRegion;
+  region: BeaconRegion | EddystoneRegion;
   startOperation: () => Promise<void>;
   stopOperation: () => Promise<void>;
   startErrorCode: string;

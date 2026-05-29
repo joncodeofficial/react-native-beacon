@@ -6,6 +6,8 @@ import type {
   BeaconsRangedEvent,
   BeaconRegion,
   BeaconScanConfig,
+  EddystoneRangedEvent,
+  EddystoneRegion,
   RegionStateChangedEvent,
   ScannerStateChangedEvent,
 } from '../types';
@@ -75,11 +77,11 @@ const Beacon = {
     hasConfigured = true;
   },
 
-  startRanging(region: BeaconRegion): Promise<void> {
+  startRanging(region: BeaconRegion | EddystoneRegion): Promise<void> {
     return NativeBeacon.startRanging(region);
   },
 
-  stopRanging(region: BeaconRegion): Promise<void> {
+  stopRanging(region: BeaconRegion | EddystoneRegion): Promise<void> {
     return NativeBeacon.stopRanging(region);
   },
 
@@ -142,6 +144,13 @@ const Beacon = {
   onScannerStateChanged(callback: (event: ScannerStateChangedEvent) => void) {
     return emitter.addListener(
       'onScannerStateChanged',
+      callback as (...args: readonly unknown[]) => unknown
+    );
+  },
+
+  onEddystoneRanged(callback: (event: EddystoneRangedEvent) => void) {
+    return emitter.addListener(
+      'onEddystoneRanged',
       callback as (...args: readonly unknown[]) => unknown
     );
   },

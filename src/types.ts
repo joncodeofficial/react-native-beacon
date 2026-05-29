@@ -7,6 +7,12 @@ export interface BeaconRegion {
   minor?: number;
 }
 
+export interface EddystoneRegion {
+  identifier: string;
+  namespace: string;
+  instance?: string;
+}
+
 // Snapshot of everything an app typically needs to explain why scanning is or
 // is not ready right now, without forcing callers to infer it themselves.
 export interface BeaconEnvironmentState {
@@ -76,9 +82,26 @@ export interface Beacon {
   timestamp: number;
 }
 
+export interface EddystoneUidReading {
+  namespace: string;
+  instance: string;
+  rssi: number;
+  distance: number;
+  rawDistance: number;
+  txPower: number;
+  /** @warning May be randomized on Android 10+ */
+  macAddress: string;
+  timestamp: number;
+}
+
 export interface BeaconsRangedEvent {
   region: BeaconRegion;
   beacons: Beacon[];
+}
+
+export interface EddystoneRangedEvent {
+  region: EddystoneRegion;
+  beacons: EddystoneUidReading[];
 }
 
 export interface RegionStateChangedEvent {
@@ -87,7 +110,7 @@ export interface RegionStateChangedEvent {
 }
 
 export interface BeaconFailureEvent {
-  region?: BeaconRegion;
+  region?: BeaconRegion | EddystoneRegion;
   code: string;
   message: string;
   nativeCode?: number;
@@ -108,6 +131,12 @@ export interface UseBeaconOptions {
   stopOnUnmount?: boolean;
 }
 
+export interface UseEddystoneOptions {
+  region: EddystoneRegion;
+  autoStart?: boolean;
+  stopOnUnmount?: boolean;
+}
+
 export interface UseBeaconBaseResult {
   error: BeaconFailureEvent | null;
   isActive: boolean;
@@ -124,6 +153,10 @@ export interface UseBeaconRangingResult extends UseBeaconBaseResult {
 
 export interface UseBeaconMonitoringResult extends UseBeaconBaseResult {
   regionState: BeaconHookRegionState;
+}
+
+export interface UseEddystoneRangingResult extends UseBeaconBaseResult {
+  beacons: EddystoneUidReading[];
 }
 
 export interface UseMonitorThenRangeResult extends UseBeaconBaseResult {

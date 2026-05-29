@@ -70,6 +70,7 @@ class BeaconModule(reactContext: ReactApplicationContext) :
       if (!Companion.beaconManagerInitialized) {
         it.beaconParsers.add(BeaconParser().setBeaconLayout("m:2-3=0215,i:4-19,i:20-21,i:22-23,p:24-24,d:25-25"))
         it.beaconParsers.add(BeaconParser().setBeaconLayout("m:2-3=beac,i:4-19,i:20-21,i:22-23,p:24-24,d:25-25"))
+        it.beaconParsers.add(BeaconParser().setBeaconLayout("s:0-1=feaa,m:2-2=00,p:3-3:-41,i:4-13,i:14-19"))
         it.foregroundScanPeriod = 10_000L
         it.backgroundScanPeriod = 10_000L
         Companion.beaconManagerInitialized = true
@@ -359,17 +360,35 @@ class BeaconModule(reactContext: ReactApplicationContext) :
 
   private fun sendBeaconsRangedEvent(beacons: Collection<org.altbeacon.beacon.Beacon>, region: Region) {
     if (!reactApplicationContext.hasActiveReactInstance()) return
-    val beaconArray = Arguments.createArray()
+
+    val iBeacons = Arguments.createArray()
+    val eddystoneBeacons = Arguments.createArray()
+
     for (beacon in beacons) {
       val key = "${beacon.id1}:${beacon.id2}:${beacon.id3}"
       val rawDistance = beacon.distance
       val distance = if (kalmanEnabled) kalman.apply(key, rawDistance) else rawDistance
-      beaconArray.pushMap(BeaconConverter.beaconToWritableMap(beacon, distance, rawDistance))
+
+      if (BeaconConverter.isEddystoneUid(beacon)) {
+        eddystoneBeacons.pushMap(BeaconConverter.eddystoneBeaconToWritableMap(beacon, distance, rawDistance))
+      } else {
+        iBeacons.pushMap(BeaconConverter.beaconToWritableMap(beacon, distance, rawDistance))
+      }
     }
-    sendEvent("onBeaconsRanged", Arguments.createMap().apply {
-      putMap("region", BeaconConverter.regionToWritableMap(region))
-      putArray("beacons", beaconArray)
-    })
+
+    if (iBeacons.size() > 0) {
+      sendEvent("onBeaconsRanged", Arguments.createMap().apply {
+        putMap("region", BeaconConverter.regionToWritableMap(region))
+        putArray("beacons", iBeacons)
+      })
+    }
+
+    if (eddystoneBeacons.size() > 0) {
+      sendEvent("onEddystoneRanged", Arguments.createMap().apply {
+        putMap("region", BeaconConverter.eddystoneRegionToWritableMap(region))
+        putArray("beacons", eddystoneBeacons)
+      })
+    }
   }
 
   private fun sendRegionStateChangedEvent(region: Region, state: String) {

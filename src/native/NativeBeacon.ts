@@ -42,21 +42,26 @@ export interface Spec extends TurboModule {
     }>
   ): void;
 
-  // Ranging: detects nearby beacons with RSSI and distance (~every 1s)
+  // Ranging: detects nearby beacons with RSSI and distance (~every 1s).
+  // Accepts both iBeacon regions (uuid) and Eddystone-UID regions (namespace).
   startRanging(
     region: Readonly<{
       identifier: string;
-      uuid: string;
+      uuid?: string;
       major?: number;
       minor?: number;
+      namespace?: string;
+      instance?: string;
     }>
   ): Promise<void>;
   stopRanging(
     region: Readonly<{
       identifier: string;
-      uuid: string;
+      uuid?: string;
       major?: number;
       minor?: number;
+      namespace?: string;
+      instance?: string;
     }>
   ): Promise<void>;
 
@@ -83,9 +88,11 @@ export interface Spec extends TurboModule {
     ReadonlyArray<
       Readonly<{
         identifier: string;
-        uuid: string;
+        uuid?: string;
         major?: number;
         minor?: number;
+        namespace?: string;
+        instance?: string;
       }>
     >
   >;

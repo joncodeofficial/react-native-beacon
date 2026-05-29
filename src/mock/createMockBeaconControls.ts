@@ -5,6 +5,9 @@ import type {
   BeaconFailureEvent,
   BeaconsRangedEvent,
   BeaconRegion,
+  EddystoneRangedEvent,
+  EddystoneRegion,
+  EddystoneUidReading,
   RegionStateChangedEvent,
   ScannerStateChangedEvent,
 } from '../types';
@@ -12,6 +15,10 @@ import type {
 export interface MockBeaconControls {
   readonly adapter: BeaconAdapter;
   simulateRanging(region: BeaconRegion, beacons: BeaconReading[]): void;
+  simulateEddystoneRanging(
+    region: EddystoneRegion,
+    beacons: EddystoneUidReading[]
+  ): void;
   simulateRegionEnter(region: BeaconRegion): void;
   simulateRegionExit(region: BeaconRegion): void;
   simulateRangingFailure(event: BeaconFailureEvent): void;
@@ -32,6 +39,7 @@ const defaultEnvironmentState: BeaconEnvironmentState = {
 
 export function createMockBeaconControls(): MockBeaconControls {
   const beaconsRanged = new Set<(e: BeaconsRangedEvent) => void>();
+  const eddystoneRanged = new Set<(e: EddystoneRangedEvent) => void>();
   const rangingFailed = new Set<(e: BeaconFailureEvent) => void>();
   const regionStateChanged = new Set<(e: RegionStateChangedEvent) => void>();
   const monitoringFailed = new Set<(e: BeaconFailureEvent) => void>();
@@ -49,6 +57,14 @@ export function createMockBeaconControls(): MockBeaconControls {
       return {
         remove: () => {
           beaconsRanged.delete(cb);
+        },
+      };
+    },
+    onEddystoneRanged(cb) {
+      eddystoneRanged.add(cb);
+      return {
+        remove: () => {
+          eddystoneRanged.delete(cb);
         },
       };
     },
@@ -90,6 +106,9 @@ export function createMockBeaconControls(): MockBeaconControls {
     adapter,
     simulateRanging(region, beacons) {
       beaconsRanged.forEach((cb) => cb({ region, beacons }));
+    },
+    simulateEddystoneRanging(region, beacons) {
+      eddystoneRanged.forEach((cb) => cb({ region, beacons }));
     },
     simulateRegionEnter(region) {
       regionStateChanged.forEach((cb) => cb({ region, state: 'inside' }));
