@@ -1,6 +1,6 @@
 # react-native-beacon-kit
 
-iBeacon and AltBeacon for React Native with a hooks-first API, New Architecture support, and real Android background scanning.
+iBeacon, AltBeacon, and Eddystone-UID for React Native with a hooks-first API, New Architecture support, and real Android background scanning.
 
 > **Platform support:** Android and iOS
 
@@ -10,7 +10,7 @@ iBeacon and AltBeacon for React Native with a hooks-first API, New Architecture 
 - Low-level API for custom orchestration
 - Android background scanning with foreground service support
 - iOS monitoring flow for region entry and exit
-- iBeacon and AltBeacon support
+- iBeacon, AltBeacon, and Eddystone-UID support (Eddystone on Android)
 - Optional Kalman filter for more stable distance readings
 - Environment diagnostics for Bluetooth, location services, and permissions
 - Expo plugin included
@@ -18,12 +18,13 @@ iBeacon and AltBeacon for React Native with a hooks-first API, New Architecture 
 
 ## When to use each API
 
-| API                     | Use it when                                                        |
-| ----------------------- | ------------------------------------------------------------------ |
-| `useBeaconRanging()`    | You want nearby beacons, RSSI, and distance                        |
-| `useBeaconMonitoring()` | You only need `inside` / `outside` region state                    |
-| `useMonitorThenRange()` | You want monitoring to wake the flow, then range only while inside |
-| `Beacon.*`              | You need custom orchestration or a non-React flow                  |
+| API                       | Use it when                                                        |
+| ------------------------- | ------------------------------------------------------------------ |
+| `useBeaconRanging()`      | You want nearby iBeacon/AltBeacon readings, RSSI, and distance     |
+| `useBeaconMonitoring()`   | You only need `inside` / `outside` region state                    |
+| `useMonitorThenRange()`   | You want monitoring to wake the flow, then range only while inside |
+| `useEddystoneRanging()`   | You want nearby Eddystone-UID readings on Android                  |
+| `Beacon.*`                | You need custom orchestration or a non-React flow                  |
 
 If you are building a screen in React, start with the hooks API.
 
@@ -387,6 +388,40 @@ Returns combined monitoring and ranging state:
 - `clearError()`
 - `start()`, `stop()`
 
+#### `useEddystoneRanging({ region, autoStart?, stopOnUnmount? })`
+
+Android only. Ranges Eddystone-UID beacons by namespace and optional instance.
+The region uses `namespace` and `instance` instead of `uuid`, `major`, and `minor`.
+
+```ts
+import { useEddystoneRanging } from 'react-native-beacon-kit';
+
+const region = {
+  identifier: 'my-namespace',
+  namespace: 'a1b23c45d67e9fab0034',
+  instance: '0034567890ab', // optional — omit to match any instance
+};
+
+const { beacons, isActive, start, stop } = useEddystoneRanging({ region });
+```
+
+Each beacon in the `beacons` array:
+
+```ts
+interface EddystoneUidReading {
+  namespace: string;  // 10-byte hex string
+  instance: string;   // 6-byte hex string
+  rssi: number;
+  distance: number;
+  rawDistance: number;
+  txPower: number;
+  macAddress: string;
+  timestamp: number;
+}
+```
+
+**Platform note:** iOS does not support Eddystone natively. `useEddystoneRanging` works on Android only. On iOS the hook mounts without error but `beacons` will always be empty.
+
 ## Environment diagnostics
 
 Use `useBeaconEnvironment()` if you want a React-friendly view of scanner
@@ -501,7 +536,8 @@ Starts or stops region entry and exit monitoring.
 
 #### Events
 
-- `Beacon.onBeaconsRanged(callback)`
+- `Beacon.onBeaconsRanged(callback)` — iBeacon / AltBeacon ranging results
+- `Beacon.onEddystoneRanged(callback)` — Eddystone-UID ranging results (Android only)
 - `Beacon.onRegionStateChanged(callback)`
 - `Beacon.onRangingFailed(callback)`
 - `Beacon.onMonitoringFailed(callback)`
