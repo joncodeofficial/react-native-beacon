@@ -9,6 +9,13 @@ All notable changes to this project will be documented in this file.
 * add MockBeaconProvider for testing beacon UI without hardware ([f6b6d37](https://github.com/joncodeofficial/react-native-beacon-kit/commit/f6b6d3745a7fc6e1af004e40c85ffed9feabd5b2))
 * **android:** add Eddystone-UID support ([7cef6d9](https://github.com/joncodeofficial/react-native-beacon-kit/commit/7cef6d98a63ef5bcc9b178466d0ad2fdf21e6df3))
 
+## [0.10.0](https://github.com/joncodeofficial/react-native-beacon-kit/compare/v0.9.0...v0.10.0) (2026-05-30)
+
+### Features
+
+* add MockBeaconProvider for testing beacon UI without hardware ([f6b6d37](https://github.com/joncodeofficial/react-native-beacon-kit/commit/f6b6d3745a7fc6e1af004e40c85ffed9feabd5b2))
+* **android:** add Eddystone-UID support ([7cef6d9](https://github.com/joncodeofficial/react-native-beacon-kit/commit/7cef6d98a63ef5bcc9b178466d0ad2fdf21e6df3))
+
 ## [0.9.0](https://github.com/joncodeofficial/react-native-beacon-kit/compare/v0.8.1...v0.9.0) (2026-05-01)
 
 ### Features
