@@ -21,48 +21,25 @@ This is the most important track before adding more surface area.
 
 ---
 
-## Next priority: Protocol expansion
+## Protocol expansion
 
 ### Eddystone-UID support
 
-This is the biggest missing capability at the protocol level.
-
-Target outcome:
-
-```ts
-{
-  type: 'eddystone-uid',
-  namespace: 'a1b23c45d67e9fab...',
-  instance: '0034567890ab',
-  rssi: -65,
-  distance: 1.2,
-  txPower: -59,
-  macAddress: '...',
-  timestamp: 123456789,
-}
-```
-
-Work required:
-
-- [ ] Add Eddystone parser support on Android
-- [ ] Design the public reading model first:
-  - discriminated union such as `IBeaconReading | EddystoneUidReading`
-  - avoid forcing Eddystone into the current `uuid / major / minor` shape
-- [ ] Update region/filter types to support Eddystone namespace and instance filtering
-- [x] Document the platform story clearly:
-  - Android support expectations
-  - iOS limitations or alternative approach if parity is not possible
+- [x] Add Eddystone parser support on Android
+- [x] Design the public reading model (`EddystoneUidReading`, `EddystoneRegion`)
+- [x] Update region/filter types to support Eddystone namespace and instance filtering
+- [x] Document the platform story clearly
 
 ---
 
 ## Mock Provider for testing
 
-Allows injecting fake beacons via code so developers can test UI logic without physical hardware.
+- [x] `MockBeaconProvider` + `createMockBeaconControls` injection API
+- [x] Support simulating ranging events with configurable RSSI and distance
+- [x] Support simulating region enter/exit events
+- [x] Works with Jest and `@testing-library/react-native`
 
-- [ ] Design a `MockBeaconProvider` or equivalent injection API
-- [ ] Support simulating ranging events with configurable RSSI and distance
-- [ ] Support simulating region enter/exit events
-- [ ] Document how to use it with Jest and `@testing-library/react-native`
+---
 
 ## API and core improvements
 
