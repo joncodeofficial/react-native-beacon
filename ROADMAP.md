@@ -1,8 +1,6 @@
 # Roadmap
 
-## Next priority: Reliability and validation
-
-This is the most important track before adding more surface area.
+## Reliability and validation
 
 ### Cross-platform confidence
 
@@ -17,27 +15,6 @@ This is the most important track before adding more surface area.
 ### Test strategy
 
 - [ ] Add stronger cross-platform confidence beyond JS contract tests
-- [x] Add a documented real-device validation matrix for releases
-
----
-
-## Protocol expansion
-
-### Eddystone-UID support
-
-- [x] Add Eddystone parser support on Android
-- [x] Design the public reading model (`EddystoneUidReading`, `EddystoneRegion`)
-- [x] Update region/filter types to support Eddystone namespace and instance filtering
-- [x] Document the platform story clearly
-
----
-
-## Mock Provider for testing
-
-- [x] `MockBeaconProvider` + `createMockBeaconControls` injection API
-- [x] Support simulating ranging events with configurable RSSI and distance
-- [x] Support simulating region enter/exit events
-- [x] Works with Jest and `@testing-library/react-native`
 
 ---
 
