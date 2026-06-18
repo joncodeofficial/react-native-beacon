@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.10.1](https://github.com/joncodeofficial/react-native-beacon-kit/compare/v0.10.0...v0.10.1) (2026-06-18)
+
+### Bug Fixes
+
+* update README with new features and permission request example ([edf8ebb](https://github.com/joncodeofficial/react-native-beacon-kit/commit/edf8ebbc085540d87fd83c8ceb0655f5142d04b7))
+
 ## [0.10.0](https://github.com/joncodeofficial/react-native-beacon-kit/compare/v0.9.0...v0.10.0) (2026-05-30)
 
 ### Features
