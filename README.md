@@ -4,17 +4,36 @@ iBeacon, AltBeacon, and Eddystone-UID for React Native with a hooks-first API, N
 
 > **Platform support:** Android and iOS
 
+[![npm](https://img.shields.io/npm/v/react-native-beacon-kit)](https://www.npmjs.com/package/react-native-beacon-kit)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS-lightgrey)
+![New Architecture](https://img.shields.io/badge/New%20Architecture-supported-brightgreen)
+
+- ✅ Hooks-first API (`useBeaconRanging`, `useBeaconMonitoring`, `useMonitorThenRange`)
+- ✅ New Architecture (Fabric) ready
+- ✅ Expo plugin included
+- ✅ Real Android background scanning via foreground service
+- ✅ Android 14+ and 16 KB page size (Android 15+) support
+- ✅ iBeacon, AltBeacon, and Eddystone-UID
+- ✅ Kalman filter for stable distance readings
+- ✅ Environment diagnostics built in
+
 ## Why this library
 
-- Hooks-first API for React apps
-- Low-level API for custom orchestration
-- Android background scanning with foreground service support
-- iOS monitoring flow for region entry and exit
-- iBeacon, AltBeacon, and Eddystone-UID support (Eddystone on Android)
-- Optional Kalman filter for more stable distance readings
-- Environment diagnostics for Bluetooth, location services, and permissions
-- Expo plugin included
-- Compatible with Android 16 KB page size (Android 15+)
+Most beacon libraries for React Native are unmaintained or broken on modern Android and iOS. This library was built to fill that gap.
+
+| Feature | react-native-beacon-kit | react-native-beacons-manager |
+| ------- | ----------------------- | ---------------------------- |
+| Actively maintained | ✅ | ❌ Last updated 3+ years ago |
+| New Architecture (Fabric) | ✅ | ❌ |
+| Expo plugin | ✅ | ❌ |
+| Hooks-first API | ✅ | ❌ Event listeners only |
+| Android 14+ support | ✅ | ❌ |
+| Android 16 KB page size (Android 15+) | ✅ | ❌ |
+| Real Android background scanning | ✅ Foreground service | ⚠️ Unreliable |
+| Eddystone-UID | ✅ Android | ❌ |
+| Environment diagnostics | ✅ | ❌ |
+| Kalman filter for distance | ✅ | ❌ |
 
 ## When to use each API
 
@@ -85,6 +104,35 @@ The plugin automatically adds the required Android permissions, iOS `Info.plist`
 
 ## Quick start (High-level API)
 
+### Requesting permissions
+
+Call this before starting the scanner. Uses [react-native-permissions](https://github.com/zoontek/react-native-permissions):
+
+```sh
+npm install react-native-permissions
+```
+
+```ts
+import { Platform } from 'react-native';
+import { request, PERMISSIONS } from 'react-native-permissions';
+
+async function requestPermissions() {
+  if (Platform.OS === 'android') {
+    await request(PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION);
+    if (Platform.Version >= 31) {
+      await request(PERMISSIONS.ANDROID.BLUETOOTH_SCAN);
+      await request(PERMISSIONS.ANDROID.BLUETOOTH_CONNECT);
+    }
+  } else {
+    await request(PERMISSIONS.IOS.LOCATION_WHEN_IN_USE);
+  }
+}
+```
+
+For background scanning or notification permissions, see [Platform setup](#platform-setup).
+
+### Minimal ranging example
+
 This is the shortest useful flow for most apps:
 
 1. Mount the hook
@@ -93,9 +141,23 @@ This is the shortest useful flow for most apps:
 4. Call `start()`
 
 ```ts
+import { Platform } from 'react-native';
+import { request, PERMISSIONS } from 'react-native-permissions';
 import { useCallback } from 'react';
 import { Button, Text, View } from 'react-native';
 import Beacon, { useBeaconRanging } from 'react-native-beacon-kit';
+
+async function requestPermissions() {
+  if (Platform.OS === 'android') {
+    await request(PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION);
+    if (Platform.Version >= 31) {
+      await request(PERMISSIONS.ANDROID.BLUETOOTH_SCAN);
+      await request(PERMISSIONS.ANDROID.BLUETOOTH_CONNECT);
+    }
+  } else {
+    await request(PERMISSIONS.IOS.LOCATION_WHEN_IN_USE);
+  }
+}
 
 const region = {
   identifier: 'store',
@@ -109,7 +171,6 @@ export const BeaconScreen = () => {
 
   const handleStart = useCallback(async () => {
     try {
-      // Request runtime permissions first.
       await requestPermissions();
 
       // Configure the native scanner before starting it.
@@ -665,36 +726,72 @@ Add `POST_NOTIFICATIONS` to your runtime permission flow.
 
 Review [Advanced Android](#advanced-android). `foregroundService: true` may not be enough on some OEM devices.
 
-## Validated hardware
+## Migrating from react-native-beacons-manager
 
-The following combinations have been tested against this library. If you validate additional hardware, contributions to this table are welcome.
+`react-native-beacons-manager` is no longer maintained and does not support the New Architecture. Here is the equivalent pattern in this library.
 
-### Beacon vendors
+### Install
 
-| Vendor | Protocol | Tested |
-| ------ | -------- | ------ |
-| Estimote | iBeacon | Pending |
-| Kontakt.io | iBeacon | Pending |
-| Minew | iBeacon | Pending |
+```sh
+npm uninstall react-native-beacons-manager
+npm install react-native-beacon-kit
+```
 
-### Android versions
+### Ranging
 
-| Android version | API level | Tested |
-| --------------- | --------- | ------ |
-| Android 12 | 31 | Pending |
-| Android 13 | 33 | Pending |
-| Android 14 | 34 | Pending |
-| Android 15 | 35 | Pending |
+**Before:**
 
-### iOS versions
+```ts
+import BeaconsManager from 'react-native-beacons-manager';
+import { DeviceEventEmitter } from 'react-native';
 
-| iOS version | Tested |
-| ----------- | ------ |
-| iOS 16 | Pending |
-| iOS 17 | Pending |
-| iOS 18 | Pending |
+BeaconsManager.requestAlwaysAuthorization();
+BeaconsManager.startRangingBeaconsInRegion('myRegion', 'FDA50693-A4E2-4FB1-AFCF-C6EB07647825');
 
-This matrix will be updated as validation is completed. Releases that include real-device validation will note it in the [CHANGELOG](./CHANGELOG.md).
+DeviceEventEmitter.addListener('beaconsDidRange', (data) => {
+  console.log(data.beacons);
+});
+```
+
+**After (hooks):**
+
+```ts
+import Beacon, { useBeaconRanging } from 'react-native-beacon-kit';
+
+const { beacons, start } = useBeaconRanging({
+  region: { identifier: 'myRegion', uuid: 'FDA50693-A4E2-4FB1-AFCF-C6EB07647825' },
+});
+
+// call start() after permissions are granted
+```
+
+### Monitoring
+
+**Before:**
+
+```ts
+BeaconsManager.startMonitoringForRegion('myRegion', 'FDA50693...');
+DeviceEventEmitter.addListener('regionDidEnter', () => { /* ... */ });
+DeviceEventEmitter.addListener('regionDidExit', () => { /* ... */ });
+```
+
+**After:**
+
+```ts
+const { regionState, start } = useBeaconMonitoring({
+  region: { identifier: 'myRegion', uuid: 'FDA50693...' },
+});
+```
+
+### Permissions
+
+`react-native-beacons-manager` had built-in helpers like `requestAlwaysAuthorization()`. This library delegates to [react-native-permissions](https://github.com/zoontek/react-native-permissions). See [Platform setup](#platform-setup) and the [requestPermissions helper](#requesting-permissions) in the quick start.
+
+### What to remove
+
+- Uninstall `react-native-beacons-manager`
+- Remove all `DeviceEventEmitter` listener setup for beacons
+- Replace `BeaconsManager.requestAlwaysAuthorization()` with the `requestPermissions` helper above
 
 ## License
 
