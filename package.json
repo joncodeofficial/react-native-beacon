@@ -74,7 +74,9 @@
     "ios",
     "android",
     "expo",
-    "expo plugin"
+    "expo plugin",
+    "eddystone",
+    "eddystone-uid"
   ],
   "repository": {
     "type": "git",
