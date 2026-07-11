@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.10.2](https://github.com/joncodeofficial/react-native-beacon-kit/compare/v0.10.1...v0.10.2) (2026-07-11)
+
+### Bug Fixes
+
+* export app.plugin.js so Expo can resolve the config plugin ([6549dfd](https://github.com/joncodeofficial/react-native-beacon-kit/commit/6549dfdcf3efd2c1d072a6286cb0b6d9ad1d40cc))
+* link CoreBluetooth framework for iOS beacon scanning ([c33826f](https://github.com/joncodeofficial/react-native-beacon-kit/commit/c33826f8fe3bfccc5afde61deb5fb34fd8766fc1))
+* rename namespace field to avoid reserved Objective-C++ keyword in codegen ([c15153c](https://github.com/joncodeofficial/react-native-beacon-kit/commit/c15153cd94fd8b76bfaa87dd4a0557a499593bd5))
+
 ## [0.10.1](https://github.com/joncodeofficial/react-native-beacon-kit/compare/v0.10.0...v0.10.1) (2026-06-18)
 
 ### Bug Fixes
