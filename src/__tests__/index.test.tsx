@@ -5,6 +5,8 @@ import type {
   BeaconScanConfig,
   BeaconFailureEvent,
   BeaconsRangedEvent,
+  EddystoneRangedEvent,
+  EddystoneRegion,
   RegionStateChangedEvent,
   ScannerStateChangedEvent,
 } from '../index';
@@ -265,6 +267,86 @@ describe('Beacon', () => {
 
       await expect(Beacon.getMonitoredRegions()).rejects.toBe(nativeError);
       expect(mockNativeModule.getMonitoredRegions).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // `namespace` is reserved in Objective-C++, so the wire format between JS and
+  // native uses `eddystoneNamespace` while the public API keeps `namespace`
+  // (see src/api/Beacon.ts). These tests guard that translation.
+  describe('eddystone namespace wire translation', () => {
+    const eddystoneRegion: EddystoneRegion = {
+      identifier: 'eddystone-region',
+      namespace: 'edd1ebeac04e5efa1bd6',
+      instance: '111111111111',
+    };
+
+    it('translates `namespace` to `eddystoneNamespace` when calling startRanging/stopRanging', async () => {
+      const mockNativeModule = getMockNativeModule();
+
+      await expect(
+        Beacon.startRanging(eddystoneRegion)
+      ).resolves.toBeUndefined();
+      await expect(
+        Beacon.stopRanging(eddystoneRegion)
+      ).resolves.toBeUndefined();
+
+      const expectedWireRegion = {
+        identifier: eddystoneRegion.identifier,
+        instance: eddystoneRegion.instance,
+        eddystoneNamespace: eddystoneRegion.namespace,
+      } as unknown as BeaconRegion;
+      expect(mockNativeModule.startRanging).toHaveBeenCalledWith(
+        expectedWireRegion
+      );
+      expect(mockNativeModule.stopRanging).toHaveBeenCalledWith(
+        expectedWireRegion
+      );
+    });
+
+    it('translates `eddystoneNamespace` back to `namespace` in getRangedRegions results', async () => {
+      const mockNativeModule = getMockNativeModule();
+      mockNativeModule.getRangedRegions.mockResolvedValue([
+        {
+          identifier: eddystoneRegion.identifier,
+          instance: eddystoneRegion.instance,
+          eddystoneNamespace: eddystoneRegion.namespace,
+        } as unknown as BeaconRegion,
+      ]);
+
+      await expect(Beacon.getRangedRegions()).resolves.toEqual([
+        eddystoneRegion,
+      ]);
+    });
+
+    it('translates the region in onEddystoneRanged events back to `namespace`', () => {
+      const callback = jest.fn<(event: EddystoneRangedEvent) => void>();
+      const wireEvent = {
+        region: {
+          identifier: eddystoneRegion.identifier,
+          instance: eddystoneRegion.instance,
+          eddystoneNamespace: eddystoneRegion.namespace,
+        },
+        beacons: [
+          {
+            namespace: eddystoneRegion.namespace,
+            instance: eddystoneRegion.instance!,
+            rssi: -61,
+            distance: 0.8,
+            rawDistance: 0.9,
+            txPower: -59,
+            macAddress: 'AA:BB:CC:DD:EE:FF',
+            timestamp: 1_713_000_000_000,
+          },
+        ],
+      };
+
+      Beacon.onEddystoneRanged(callback);
+      emitMockEvent('onEddystoneRanged', wireEvent);
+
+      expect(callback).toHaveBeenCalledWith({
+        region: eddystoneRegion,
+        beacons: wireEvent.beacons,
+      });
     });
   });
 

@@ -43,14 +43,18 @@ export interface Spec extends TurboModule {
   ): void;
 
   // Ranging: detects nearby beacons with RSSI and distance (~every 1s).
-  // Accepts both iBeacon regions (uuid) and Eddystone-UID regions (namespace).
+  // Accepts both iBeacon regions (uuid) and Eddystone-UID regions (eddystoneNamespace).
+  // NOTE: the field is `eddystoneNamespace`, not `namespace` — `namespace` is a reserved
+  // word in Objective-C++ and codegen emits an accessor method named after the field,
+  // which fails to compile. The public API still exposes it as `namespace`; the
+  // translation happens in src/api/Beacon.ts.
   startRanging(
     region: Readonly<{
       identifier: string;
       uuid?: string;
       major?: number;
       minor?: number;
-      namespace?: string;
+      eddystoneNamespace?: string;
       instance?: string;
     }>
   ): Promise<void>;
@@ -60,7 +64,7 @@ export interface Spec extends TurboModule {
       uuid?: string;
       major?: number;
       minor?: number;
-      namespace?: string;
+      eddystoneNamespace?: string;
       instance?: string;
     }>
   ): Promise<void>;
@@ -91,7 +95,7 @@ export interface Spec extends TurboModule {
         uuid?: string;
         major?: number;
         minor?: number;
-        namespace?: string;
+        eddystoneNamespace?: string;
         instance?: string;
       }>
     >

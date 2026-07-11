@@ -39,6 +39,33 @@ const mergeBeaconConfig = (
 const beaconConfigEquals = (a: BeaconScanConfig, b: BeaconScanConfig) =>
   JSON.stringify(a) === JSON.stringify(b);
 
+// `namespace` is a reserved word in Objective-C++ and breaks codegen if used
+// as a TurboModule spec field name (see src/native/NativeBeacon.ts), so the
+// wire format uses `eddystoneNamespace`. These helpers keep the public API
+// on `namespace` as documented.
+type WireRegion = Readonly<{
+  identifier: string;
+  uuid?: string;
+  major?: number;
+  minor?: number;
+  eddystoneNamespace?: string;
+  instance?: string;
+}>;
+
+const toWireRegion = (region: BeaconRegion | EddystoneRegion): WireRegion => {
+  if (!('namespace' in region)) {
+    return region;
+  }
+  const { namespace, ...rest } = region;
+  return { ...rest, eddystoneNamespace: namespace };
+};
+
+const fromWireEddystoneRegion = (region: WireRegion): EddystoneRegion => ({
+  identifier: region.identifier,
+  namespace: region.eddystoneNamespace ?? '',
+  instance: region.instance,
+});
+
 const Beacon = {
   checkPermissions(): Promise<boolean> {
     return NativeBeacon.checkPermissions();
@@ -78,11 +105,11 @@ const Beacon = {
   },
 
   startRanging(region: BeaconRegion | EddystoneRegion): Promise<void> {
-    return NativeBeacon.startRanging(region);
+    return NativeBeacon.startRanging(toWireRegion(region));
   },
 
   stopRanging(region: BeaconRegion | EddystoneRegion): Promise<void> {
-    return NativeBeacon.stopRanging(region);
+    return NativeBeacon.stopRanging(toWireRegion(region));
   },
 
   startMonitoring(region: BeaconRegion): Promise<void> {
@@ -93,8 +120,12 @@ const Beacon = {
     return NativeBeacon.stopMonitoring(region);
   },
 
-  getRangedRegions(): Promise<BeaconRegion[]> {
-    return NativeBeacon.getRangedRegions() as Promise<BeaconRegion[]>;
+  async getRangedRegions(): Promise<BeaconRegion[]> {
+    const regions =
+      (await NativeBeacon.getRangedRegions()) as unknown as WireRegion[];
+    return regions.map((region) =>
+      'eddystoneNamespace' in region ? fromWireEddystoneRegion(region) : region
+    ) as BeaconRegion[];
   },
 
   getMonitoredRegions(): Promise<BeaconRegion[]> {
@@ -149,9 +180,12 @@ const Beacon = {
   },
 
   onEddystoneRanged(callback: (event: EddystoneRangedEvent) => void) {
+    const wireCallback = (
+      event: Omit<EddystoneRangedEvent, 'region'> & { region: WireRegion }
+    ) => callback({ ...event, region: fromWireEddystoneRegion(event.region) });
     return emitter.addListener(
       'onEddystoneRanged',
-      callback as (...args: readonly unknown[]) => unknown
+      wireCallback as (...args: readonly unknown[]) => unknown
     );
   },
 };

@@ -17,9 +17,9 @@ internal object BeaconConverter {
     val identifier = map.getString("identifier")
       ?: throw IllegalArgumentException("identifier is required")
 
-    return if (map.hasKey("namespace")) {
-      val namespace = map.getString("namespace")
-        ?: throw IllegalArgumentException("namespace is required for Eddystone regions")
+    return if (map.hasKey("eddystoneNamespace")) {
+      val namespace = map.getString("eddystoneNamespace")
+        ?: throw IllegalArgumentException("eddystoneNamespace is required for Eddystone regions")
       val instance = if (map.hasKey("instance"))
         Identifier.parse(map.getString("instance")!!) else null
       Region(identifier, Identifier.parse(namespace), instance, null)
@@ -43,7 +43,7 @@ internal object BeaconConverter {
   fun eddystoneRegionToWritableMap(region: Region): WritableMap =
     Arguments.createMap().apply {
       putString("identifier", region.uniqueId)
-      putString("namespace", region.id1?.toString() ?: "")
+      putString("eddystoneNamespace", region.id1?.toString() ?: "")
       region.id2?.let { putString("instance", it.toString()) }
     }
 
