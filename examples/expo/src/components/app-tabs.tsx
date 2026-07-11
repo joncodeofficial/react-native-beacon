@@ -28,6 +28,14 @@ export default function AppTabs() {
           renderingMode="template"
         />
       </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="beacon">
+        <NativeTabs.Trigger.Label>Beacon</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon
+          sf="dot.radiowaves.left.and.right"
+          md="sensors"
+        />
+      </NativeTabs.Trigger>
     </NativeTabs>
   );
 }
