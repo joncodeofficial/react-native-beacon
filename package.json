@@ -40,8 +40,9 @@
     "!**/.*"
   ],
   "scripts": {
-    "example": "yarn workspace react-native-beacon-example",
-    "clean": "del-cli android/build example/android/build example/android/app/build example/ios/build lib",
+    "example:cli": "yarn workspace react-native-beacon-example",
+    "example:expo": "yarn workspace react-native-beacon-example-expo",
+    "clean": "del-cli android/build examples/cli/android/build examples/cli/android/app/build examples/cli/ios/build lib",
     "prepare": "bob build",
     "typecheck": "tsc",
     "release": "semantic-release --dry-run",
@@ -133,7 +134,8 @@
     "react-native": "*"
   },
   "workspaces": [
-    "example"
+    "examples/cli",
+    "examples/expo"
   ],
   "packageManager": "yarn@4.11.0",
   "react-native-builder-bob": {
@@ -168,7 +170,8 @@
   "jest": {
     "preset": "react-native",
     "modulePathIgnorePatterns": [
-      "<rootDir>/example/node_modules",
+      "<rootDir>/examples/cli/node_modules",
+      "<rootDir>/examples/expo/node_modules",
       "<rootDir>/lib/"
     ]
   },

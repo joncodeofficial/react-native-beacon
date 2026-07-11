@@ -242,8 +242,10 @@ export const App = () => {
 };
 ```
 
-For a fuller working example, see the `example/` app in this repository:
-[react-native-beacon-kit example](https://github.com/joncodeofficial/react-native-beacon-kit/tree/main/example)
+For fuller working examples, see the apps in this repository:
+
+- [React Native CLI example](https://github.com/joncodeofficial/react-native-beacon-kit/tree/main/examples/cli)
+- [Expo example](https://github.com/joncodeofficial/react-native-beacon-kit/tree/main/examples/expo)
 
 ### Low-level API equivalent
 

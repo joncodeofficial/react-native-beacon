@@ -1,0 +1,8 @@
+{
+	"build": {
+		"devclient": {
+			"developmentClient": true,
+			"distribution": "internal"
+		}
+	}
+}

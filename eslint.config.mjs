@@ -24,6 +24,8 @@ export default defineConfig([
     },
   },
   {
-    ignores: ['node_modules/', 'lib/'],
+    // examples/expo is Expo's own generated template, linted separately via
+    // its own `expo lint` — it doesn't share this project's lint config.
+    ignores: ['node_modules/', 'lib/', 'examples/expo/'],
   },
 ]);
