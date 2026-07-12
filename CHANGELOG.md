@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.11.0](https://github.com/joncodeofficial/react-native-beacon-kit/compare/v0.10.2...v0.11.0) (2026-07-12)
+
+### ⚠ BREAKING CHANGES
+
+* openAutostartSettings() no longer auto-detects the device
+manufacturer. Calling it with no arguments now always opens the app's generic
+system settings screen instead of an OEM-specific one. Pass a target
+explicitly to restore per-manufacturer behavior — see the README's "OEM
+settings" section.
+
+### Features
+
+* let openAutostartSettings() target a specific OEM screen instead of guessing ([bcf8185](https://github.com/joncodeofficial/react-native-beacon-kit/commit/bcf8185445c497b5542bbef24bfddf7df56c60e5))
+
 ## [0.10.2](https://github.com/joncodeofficial/react-native-beacon-kit/compare/v0.10.1...v0.10.2) (2026-07-11)
 
 ### Bug Fixes
