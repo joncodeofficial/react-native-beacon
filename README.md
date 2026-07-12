@@ -671,13 +671,21 @@ Tradeoff:
 
 ### OEM settings
 
-Some OEMs, especially Xiaomi / HyperOS, may require extra manual setup beyond normal Android permissions and foreground service behavior.
+Some Android manufacturers (Xiaomi, Oppo, Vivo, Huawei, Samsung, and others) ship their own battery/app manager on top of stock Android and kill background BLE scanning more aggressively than the standard "ignore battery optimizations" permission can prevent. The only way around it is sending the user to that manufacturer's own "autostart" / "protected apps" screen — there's no standard Android API for this, only proprietary ones per OEM. See https://dontkillmyapp.com for which manufacturers do this and how bad each one is.
 
-You can deep-link the user to the relevant settings page:
+`Beacon.openAutostartSettings()` deep-links to a specific screen when you give it the target `Activity`, and falls back to the app's generic system settings screen if you don't (or if the target can't be opened):
 
 ```ts
 Beacon.openAutostartSettings();
+
+// or, targeting a specific OEM screen:
+Beacon.openAutostartSettings({
+  packageName: 'com.miui.securitycenter',
+  className: 'com.miui.permcenter.autostart.AutoStartManagementActivity',
+});
 ```
+
+This library does not ship or maintain a manufacturer lookup table — those screens are proprietary and drift across ROM versions with no notice, so a static table (here or in code) would go stale silently. [`examples/cli/src/beaconSetup.ts`](./examples/cli/src/beaconSetup.ts) has a working, runnable example resolving two manufacturers (Xiaomi, Samsung) from `Platform.constants.Manufacturer` — copy that pattern and add the `packageName`/`className` pairs your app needs, verified on your actual target devices.
 
 Call `openAutostartSettings()` only from a user-initiated action, not during app startup.
 
