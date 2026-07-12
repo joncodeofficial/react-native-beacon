@@ -13,6 +13,7 @@ import Beacon, {
   useBeaconMonitoring,
   useBeaconRanging,
 } from 'react-native-beacon-kit';
+import { resolveOemAutostartTarget } from './beaconSetup';
 
 const TEST_REGION: BeaconRegion = {
   identifier: 'test-region',
@@ -105,6 +106,10 @@ export default function TestScreen() {
     console.log('[beacon] environment refresh requested');
   }, [refreshEnvironment]);
 
+  const handleOpenAutostartSettings = useCallback(() => {
+    Beacon.openAutostartSettings(resolveOemAutostartTarget());
+  }, []);
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Test</Text>
@@ -128,6 +133,16 @@ export default function TestScreen() {
         <Button
           title="Refresh Diagnostics"
           onPress={handleRefreshDiagnostics}
+        />
+      </View>
+      <Text style={styles.hint}>
+        Deep-links to the OEM's autostart screen on Xiaomi/Samsung, or the app's
+        generic settings screen everywhere else (see beaconSetup.ts).
+      </Text>
+      <View style={styles.row}>
+        <Button
+          title="Open Autostart Settings"
+          onPress={handleOpenAutostartSettings}
         />
       </View>
       {environmentState ? (

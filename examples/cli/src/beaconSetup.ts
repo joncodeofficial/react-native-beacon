@@ -1,5 +1,8 @@
 import { PermissionsAndroid, Platform } from 'react-native';
-import Beacon, { type BeaconScanConfig } from 'react-native-beacon-kit';
+import Beacon, {
+  type AutostartTarget,
+  type BeaconScanConfig,
+} from 'react-native-beacon-kit';
 
 const DEFAULT_BEACON_CONFIG: BeaconScanConfig = {
   scanPeriod: 1100,
@@ -59,6 +62,32 @@ export const updateBeaconExampleConfig = (config: BeaconScanConfig = {}) => {
         }
       : DEFAULT_BEACON_CONFIG.kalmanFilter,
   });
+};
+
+// react-native-beacon-kit doesn't ship an OEM manufacturer → autostart-screen
+// table (those screens are proprietary and drift across ROM versions — see
+// the README's "OEM settings" section for more known pairs). This is a
+// two-manufacturer example of resolving one from Platform.constants
+// .Manufacturer; extend or replace it with whatever your app needs.
+const OEM_AUTOSTART_TARGETS: Record<string, AutostartTarget> = {
+  xiaomi: {
+    packageName: 'com.miui.securitycenter',
+    className: 'com.miui.permcenter.autostart.AutoStartManagementActivity',
+  },
+  samsung: {
+    packageName: 'com.samsung.android.lool',
+    className: 'com.samsung.android.sm.battery.ui.BatteryActivity',
+  },
+};
+
+export const resolveOemAutostartTarget = (): AutostartTarget | undefined => {
+  if (Platform.OS !== 'android') return undefined;
+
+  const manufacturer = Platform.constants.Manufacturer?.toLowerCase() ?? '';
+  const match = Object.keys(OEM_AUTOSTART_TARGETS).find((brand) =>
+    manufacturer.includes(brand)
+  );
+  return match ? OEM_AUTOSTART_TARGETS[match] : undefined;
 };
 
 export const initializeBeaconExample = async () => {
