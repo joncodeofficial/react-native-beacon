@@ -267,7 +267,8 @@ class BeaconModule(reactContext: ReactApplicationContext) :
     }
   }
 
-  override fun openAutostartSettings() = foregroundService.openAutostartSettings()
+  override fun openAutostartSettings(packageName: String?, className: String?) =
+    foregroundService.openAutostartSettings(packageName, className)
 
   // ─── NativeEventEmitter ──────────────────────────────────────────────────
 

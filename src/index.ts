@@ -1,6 +1,7 @@
 export { default } from './api/Beacon';
 
 export type {
+  AutostartTarget,
   Beacon,
   BeaconEnvironmentState,
   BeaconFailureEvent,

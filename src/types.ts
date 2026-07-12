@@ -65,6 +65,15 @@ export interface BeaconScanConfig {
   aggressiveBackground?: boolean;
 }
 
+// Identifies a specific Activity to deep-link to, e.g. an OEM's autostart /
+// protected-apps settings screen. There's no standard Android API for these —
+// each manufacturer ships its own, and they're not this library's concern to
+// track. See the "OEM settings" section of the README for known pairs.
+export interface AutostartTarget {
+  packageName: string;
+  className: string;
+}
+
 // ─── Runtime / event types ───────────────────────────────────────────────────
 
 export interface Beacon {

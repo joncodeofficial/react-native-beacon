@@ -329,7 +329,7 @@
 - (void)requestIgnoreBatteryOptimizations {}
 
 // No-op on iOS — no OEM autostart/power manager settings screen.
-- (void)openAutostartSettings {}
+- (void)openAutostartSettings:(NSString *)packageName className:(NSString *)className {}
 
 // ---------------------------------------------------------------------------
 // NativeEventEmitter — delegate to RCTEventEmitter superclass

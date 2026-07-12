@@ -8,12 +8,14 @@ import android.net.Uri
 import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
+import android.util.Log
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReadableMap
 import org.altbeacon.beacon.BeaconManager
 
 private const val FOREGROUND_SERVICE_ID = 456
 private const val NOTIFICATION_CHANNEL_ID = "beacon-channel"
+private const val TAG = "ForegroundServiceManager"
 
 internal class ForegroundServiceManager(private val context: ReactApplicationContext) {
 
@@ -40,18 +42,28 @@ internal class ForegroundServiceManager(private val context: ReactApplicationCon
     Companion.enabled = false
   }
 
-  fun openAutostartSettings() {
-    val intent = oemAutostartIntent() ?: Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+  // packageName/className, when both present, target a specific OEM settings
+  // screen (e.g. Xiaomi's Autostart manager). This module has no knowledge of
+  // which manufacturer needs which pair — the caller decides that. It just
+  // tries to launch what it's given and falls back to the app's generic
+  // system settings screen if that fails or nothing was given.
+  fun openAutostartSettings(packageName: String?, className: String?) {
+    val target = if (packageName != null && className != null) {
+      Intent().setClassName(packageName, className)
+    } else {
+      null
+    }
+
+    val fallback = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
       data = Uri.parse("package:${context.packageName}")
     }
-    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+
+    val intent = (target ?: fallback).apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK }
     try {
       context.startActivity(intent)
-    } catch (_: Exception) {
-      val fallback = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-        data = Uri.parse("package:${context.packageName}")
-        flags = Intent.FLAG_ACTIVITY_NEW_TASK
-      }
+    } catch (e: Exception) {
+      Log.w(TAG, "openAutostartSettings: failed to open $packageName/$className, falling back to app settings", e)
+      fallback.flags = Intent.FLAG_ACTIVITY_NEW_TASK
       context.startActivity(fallback)
     }
   }
@@ -77,23 +89,6 @@ internal class ForegroundServiceManager(private val context: ReactApplicationCon
       builder.setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)
     }
     return builder.build()
-  }
-
-  private fun oemAutostartIntent(): Intent? {
-    val manufacturer = Build.MANUFACTURER.lowercase()
-    return when {
-      manufacturer.contains("xiaomi") || manufacturer.contains("redmi") || manufacturer.contains("poco") ->
-        Intent().setClassName("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity")
-      manufacturer.contains("oppo") || manufacturer.contains("realme") ->
-        Intent().setClassName("com.coloros.safecenter", "com.coloros.privacypermissionsentry.PermissionTopActivity")
-      manufacturer.contains("vivo") ->
-        Intent().setClassName("com.vivo.permissionmanager", "com.vivo.permissionmanager.activity.BgStartUpManagerActivity")
-      manufacturer.contains("huawei") ->
-        Intent().setClassName("com.huawei.systemmanager", "com.huawei.systemmanager.startupmgr.ui.StartupNormalAppListActivity")
-      manufacturer.contains("samsung") ->
-        Intent().setClassName("com.samsung.android.lool", "com.samsung.android.sm.battery.ui.BatteryActivity")
-      else -> null
-    }
   }
 
   companion object {

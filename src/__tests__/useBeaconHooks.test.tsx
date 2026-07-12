@@ -24,7 +24,9 @@ type MockNativeModule = {
   getMonitoredRegions: Mock<() => Promise<BeaconRegion[]>>;
   isIgnoringBatteryOptimizations: Mock<() => Promise<boolean>>;
   requestIgnoreBatteryOptimizations: Mock<() => void>;
-  openAutostartSettings: Mock<() => void>;
+  openAutostartSettings: Mock<
+    (packageName?: string, className?: string) => void
+  >;
   addListener: Mock<(eventName: string) => void>;
   removeListeners: Mock<(count: number) => void>;
 };
@@ -53,7 +55,8 @@ const createMockNativeModule = (): MockNativeModule => {
     getMonitoredRegions: mockJest.fn<() => Promise<BeaconRegion[]>>(),
     isIgnoringBatteryOptimizations: mockJest.fn<() => Promise<boolean>>(),
     requestIgnoreBatteryOptimizations: mockJest.fn<() => void>(),
-    openAutostartSettings: mockJest.fn<() => void>(),
+    openAutostartSettings:
+      mockJest.fn<(packageName?: string, className?: string) => void>(),
     addListener: mockJest.fn<(eventName: string) => void>(),
     removeListeners: mockJest.fn<(count: number) => void>(),
   };

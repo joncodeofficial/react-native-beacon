@@ -115,9 +115,13 @@ export interface Spec extends TurboModule {
   isIgnoringBatteryOptimizations(): Promise<boolean>;
   requestIgnoreBatteryOptimizations(): void;
 
-  // Opens OEM-specific autostart/background permission settings.
-  // On Xiaomi opens Autostart management directly; falls back to App Info on other devices.
-  openAutostartSettings(): void;
+  // Opens an OEM-specific autostart/background-permission settings screen when
+  // packageName/className resolve to a real, launchable Activity; otherwise
+  // falls back to the app's generic system settings screen. This library
+  // doesn't maintain a manufacturer → screen lookup table (those screens are
+  // proprietary and drift across ROM versions) — the caller supplies the pair
+  // it needs. See the README's "OEM settings" section for known pairs.
+  openAutostartSettings(packageName?: string, className?: string): void;
 
   // Required by NativeEventEmitter
   addListener(eventName: string): void;

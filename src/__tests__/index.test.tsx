@@ -23,7 +23,9 @@ type MockNativeModule = {
   getMonitoredRegions: jest.Mock<() => Promise<BeaconRegion[]>>;
   isIgnoringBatteryOptimizations: jest.Mock<() => Promise<boolean>>;
   requestIgnoreBatteryOptimizations: jest.Mock<() => void>;
-  openAutostartSettings: jest.Mock<() => void>;
+  openAutostartSettings: jest.Mock<
+    (packageName?: string, className?: string) => void
+  >;
   addListener: jest.Mock<(eventName: string) => void>;
   removeListeners: jest.Mock<(count: number) => void>;
 };
@@ -51,7 +53,8 @@ const createMockNativeModule = (): MockNativeModule => ({
   getMonitoredRegions: jest.fn<() => Promise<BeaconRegion[]>>(),
   isIgnoringBatteryOptimizations: jest.fn<() => Promise<boolean>>(),
   requestIgnoreBatteryOptimizations: jest.fn<() => void>(),
-  openAutostartSettings: jest.fn<() => void>(),
+  openAutostartSettings:
+    jest.fn<(packageName?: string, className?: string) => void>(),
   addListener: jest.fn<(eventName: string) => void>(),
   removeListeners: jest.fn<(count: number) => void>(),
 });
@@ -267,6 +270,33 @@ describe('Beacon', () => {
 
       await expect(Beacon.getMonitoredRegions()).rejects.toBe(nativeError);
       expect(mockNativeModule.getMonitoredRegions).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('openAutostartSettings', () => {
+    it('passes no target through when the caller gives none', () => {
+      const mockNativeModule = getMockNativeModule();
+
+      Beacon.openAutostartSettings();
+
+      expect(mockNativeModule.openAutostartSettings).toHaveBeenCalledWith(
+        undefined,
+        undefined
+      );
+    });
+
+    it('passes the caller-supplied target through unchanged', () => {
+      const mockNativeModule = getMockNativeModule();
+
+      Beacon.openAutostartSettings({
+        packageName: 'com.miui.securitycenter',
+        className: 'com.miui.permcenter.autostart.AutoStartManagementActivity',
+      });
+
+      expect(mockNativeModule.openAutostartSettings).toHaveBeenCalledWith(
+        'com.miui.securitycenter',
+        'com.miui.permcenter.autostart.AutoStartManagementActivity'
+      );
     });
   });
 

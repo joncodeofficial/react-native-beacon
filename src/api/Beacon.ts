@@ -1,6 +1,7 @@
 import { NativeEventEmitter } from 'react-native';
 import NativeBeacon from '../native/NativeBeacon';
 import type {
+  AutostartTarget,
   BeaconEnvironmentState,
   BeaconFailureEvent,
   BeaconsRangedEvent,
@@ -140,8 +141,12 @@ const Beacon = {
     NativeBeacon.requestIgnoreBatteryOptimizations();
   },
 
-  openAutostartSettings(): void {
-    NativeBeacon.openAutostartSettings();
+  // No default target: OEM autostart screens are proprietary and unstable
+  // across ROM versions, so this library doesn't ship or maintain a
+  // manufacturer lookup table. Pass the packageName/className your app needs
+  // — see the "OEM settings" section of the README for known pairs to copy.
+  openAutostartSettings(target?: AutostartTarget): void {
+    NativeBeacon.openAutostartSettings(target?.packageName, target?.className);
   },
 
   onBeaconsRanged(callback: (event: BeaconsRangedEvent) => void) {
