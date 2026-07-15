@@ -131,6 +131,9 @@ async function requestPermissions() {
 
 For background scanning or notification permissions, see [Platform setup](#platform-setup).
 
+> [!NOTE]
+> This helper doesn't check the result of `request()` — it resolves the same way whether the user grants or denies. Before calling `Beacon.configure()` / `start()` in production, check `Beacon.checkPermissions()` (or the result of `request()`) and handle the denied case explicitly.
+
 ### Minimal ranging example
 
 This is the shortest useful flow for most apps:
@@ -203,9 +206,8 @@ This shows the smallest useful flow. In a real app, you will usually centralize
 permissions and `Beacon.configure()` at the app level, then use hooks inside
 screens.
 
-### Important Android note
-
-On Android SDK 34+, call `Beacon.configure({ foregroundService: true })` only after permissions are granted. Calling it too early can throw a `SecurityException` on a fresh install.
+> [!IMPORTANT]
+> On Android SDK 34+, call `Beacon.configure({ foregroundService: true })` only after permissions are granted. Calling it too early can throw a `SecurityException` on a fresh install.
 
 ## Recommended app-level setup
 
@@ -394,11 +396,36 @@ const sub = Beacon.onRegionStateChanged(({ state }) => {
 });
 ```
 
+### Beacon identification: UUID vs MAC address
+
+Always use the iBeacon/AltBeacon triplet (`uuid:major:minor`, or
+`namespace:instance` for Eddystone) as your primary identifier — it works
+across both platforms and beacon types.
+
+`macAddress` reliability depends on what's advertising:
+
+| Source                                  | MAC address                            |
+| ---------------------------------------- | --------------------------------------- |
+| Hardware beacons (dedicated BLE devices) | ✅ Stable — fixed at manufacture         |
+| Android 10+ phone acting as a beacon    | ⚠️ Randomized — rotates periodically     |
+| iOS (any source)                        | ❌ Unavailable — OS privacy restriction  |
+
+MAC randomization is a property of the *advertiser*, not the scanner — your
+phone just reports whatever MAC the beacon is broadcasting. Dedicated beacon
+hardware almost never rotates its MAC, since the whole point of a beacon is
+to be reliably identifiable. Use `macAddress` only as secondary metadata
+(debugging, RTLS) when you control the hardware.
+
 ## API summary
 
 ### Hooks
 
 Use these hooks if you are building a React screen.
+
+See them used in a working app:
+
+- [React Native CLI example](https://github.com/joncodeofficial/react-native-beacon-kit/tree/main/examples/cli)
+- [Expo example](https://github.com/joncodeofficial/react-native-beacon-kit/tree/main/examples/expo)
 
 Shared options for the beacon workflow hooks:
 
@@ -651,6 +678,9 @@ if (!exempt) {
 }
 ```
 
+> [!NOTE]
+> On Xiaomi/HyperOS devices, this exemption alone is often not enough — pair it with [`openAutostartSettings()`](#oem-settings) to also clear the OEM's autostart restriction.
+
 ### `aggressiveBackground`
 
 `aggressiveBackground` is off by default and is not needed for most apps.
@@ -673,7 +703,7 @@ Tradeoff:
 
 Some Android manufacturers (Xiaomi, Oppo, Vivo, Huawei, Samsung, and others) ship their own battery/app manager on top of stock Android and kill background BLE scanning more aggressively than the standard "ignore battery optimizations" permission can prevent. The only way around it is sending the user to that manufacturer's own "autostart" / "protected apps" screen — there's no standard Android API for this, only proprietary ones per OEM. See https://dontkillmyapp.com for which manufacturers do this and how bad each one is.
 
-`Beacon.openAutostartSettings()` deep-links to a specific screen when you give it the target `Activity`, and falls back to the app's generic system settings screen if you don't (or if the target can't be opened):
+`Beacon.openAutostartSettings(target?)` deep-links to a specific screen when you give it the target `Activity`, and falls back to the app's generic system settings screen if you don't (or if the target can't be opened):
 
 ```ts
 Beacon.openAutostartSettings();
@@ -685,9 +715,41 @@ Beacon.openAutostartSettings({
 });
 ```
 
-This library does not ship or maintain a manufacturer lookup table — those screens are proprietary and drift across ROM versions with no notice, so a static table (here or in code) would go stale silently. [`examples/cli/src/beaconSetup.ts`](./examples/cli/src/beaconSetup.ts) has a working, runnable example resolving two manufacturers (Xiaomi, Samsung) from `Platform.constants.Manufacturer` — copy that pattern and add the `packageName`/`className` pairs your app needs, verified on your actual target devices.
+Passing `undefined` (or nothing) is a safe fallback — it opens generic system settings on every device. To target the right screen automatically, resolve it from the device manufacturer first:
 
-Call `openAutostartSettings()` only from a user-initiated action, not during app startup.
+```ts
+import { Platform } from 'react-native';
+import Beacon, { type AutostartTarget } from 'react-native-beacon-kit';
+
+const OEM_AUTOSTART_TARGETS: Record<string, AutostartTarget> = {
+  xiaomi: {
+    packageName: 'com.miui.securitycenter',
+    className: 'com.miui.permcenter.autostart.AutoStartManagementActivity',
+  },
+  samsung: {
+    packageName: 'com.samsung.android.lool',
+    className: 'com.samsung.android.sm.battery.ui.BatteryActivity',
+  },
+  // add more as you verify them on real devices
+};
+
+function resolveOemAutostartTarget(): AutostartTarget | undefined {
+  if (Platform.OS !== 'android') return undefined;
+  const manufacturer = Platform.constants.Manufacturer?.toLowerCase() ?? '';
+  const match = Object.keys(OEM_AUTOSTART_TARGETS).find((brand) =>
+    manufacturer.includes(brand)
+  );
+  return match ? OEM_AUTOSTART_TARGETS[match] : undefined;
+}
+
+Beacon.openAutostartSettings(resolveOemAutostartTarget());
+```
+
+> [!WARNING]
+> These `packageName`/`className` pairs are proprietary and drift across ROM versions with no notice. This library does not ship or maintain a manufacturer lookup table for that reason — verify any pair on your actual target devices before shipping. See [`examples/cli/src/beaconSetup.ts`](./examples/cli/src/beaconSetup.ts) for this same pattern running in a working app.
+
+> [!IMPORTANT]
+> Call `openAutostartSettings()` only from a user-initiated action, not during app startup.
 
 ## Background wake-up
 
