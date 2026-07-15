@@ -86,7 +86,12 @@ export interface Beacon {
   /** Raw unfiltered distance from AltBeacon. Useful for calibration and debugging. */
   rawDistance: number;
   txPower: number;
-  /** @warning May be randomized on Android 10+ — use uuid + major + minor as unique identifier instead. */
+  /**
+   * BLE MAC address of the advertiser. Stable for hardware beacons (fixed at
+   * manufacture); randomized if the advertiser is an Android 10+ phone; always
+   * empty on iOS. Treat as secondary metadata — use `uuid:major:minor` as the
+   * primary identifier.
+   */
   macAddress: string;
   timestamp: number;
 }
@@ -98,7 +103,12 @@ export interface EddystoneUidReading {
   distance: number;
   rawDistance: number;
   txPower: number;
-  /** @warning May be randomized on Android 10+ */
+  /**
+   * BLE MAC address of the advertiser. Stable for hardware beacons (fixed at
+   * manufacture); randomized if the advertiser is an Android 10+ phone; always
+   * empty on iOS. Treat as secondary metadata — use `namespace:instance` as the
+   * primary identifier.
+   */
   macAddress: string;
   timestamp: number;
 }
