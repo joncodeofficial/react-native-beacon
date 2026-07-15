@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.11.1](https://github.com/joncodeofficial/react-native-beacon-kit/compare/v0.11.0...v0.11.1) (2026-07-15)
+
+### Bug Fixes
+
+* correct and clarify beacon MAC address, OEM autostart, and permissions docs ([c4fbce5](https://github.com/joncodeofficial/react-native-beacon-kit/commit/c4fbce554f54daf14ac6a082bab7ad20121d8ca7))
+
 ## [0.11.0](https://github.com/joncodeofficial/react-native-beacon-kit/compare/v0.10.2...v0.11.0) (2026-07-12)
 
 ### ⚠ BREAKING CHANGES
