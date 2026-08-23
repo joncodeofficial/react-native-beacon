@@ -31,6 +31,9 @@ export interface Spec extends TurboModule {
       foregroundServiceNotification?: Readonly<{
         title?: string;
         text?: string;
+        color?: string;
+        showStopAction?: boolean;
+        stopActionText?: string;
       }>;
       kalmanFilter?: Readonly<{
         enabled: boolean;
@@ -110,6 +113,16 @@ export interface Spec extends TurboModule {
       }>
     >
   >;
+
+  // Live update of the foreground service notification's title/text (e.g. a
+  // beacon count instead of a static string). No-op if the foreground
+  // service isn't currently enabled. Android only — no-op on iOS.
+  updateNotification(
+    config: Readonly<{
+      title?: string;
+      text?: string;
+    }>
+  ): void;
 
   // Battery optimization — required for reliable scanning with screen off
   isIgnoringBatteryOptimizations(): Promise<boolean>;

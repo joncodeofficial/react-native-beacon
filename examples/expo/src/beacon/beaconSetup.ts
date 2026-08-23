@@ -3,6 +3,7 @@ import Beacon, {
   type AutostartTarget,
   type BeaconScanConfig,
 } from 'react-native-beacon-kit';
+import { formatNotificationText } from './beaconNotificationText';
 
 const DEFAULT_BEACON_CONFIG: BeaconScanConfig = {
   scanPeriod: 1100,
@@ -11,7 +12,10 @@ const DEFAULT_BEACON_CONFIG: BeaconScanConfig = {
   foregroundService: true,
   foregroundServiceNotification: {
     title: 'Beacon Example',
-    text: 'Scanning for beacons...',
+    text: formatNotificationText(0),
+    color: '#4F46E5',
+    showStopAction: true,
+    stopActionText: 'Stop Scanning',
   },
   kalmanFilter: { enabled: true },
   aggressiveBackground: false,

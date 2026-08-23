@@ -13,6 +13,7 @@ import Beacon, {
   useBeaconMonitoring,
   useBeaconRanging,
 } from 'react-native-beacon-kit';
+import { formatNotificationText } from './beaconNotificationText';
 import { resolveOemAutostartTarget } from './beaconSetup';
 
 const TEST_REGION: BeaconRegion = {
@@ -23,6 +24,7 @@ const TEST_REGION: BeaconRegion = {
 export default function TestScreen() {
   const [rangedRegions, setRangedRegions] = useState<BeaconRegion[]>([]);
   const [monitoredRegions, setMonitoredRegions] = useState<BeaconRegion[]>([]);
+  const [stoppedFromNotification, setStoppedFromNotification] = useState(false);
   const ranging = useBeaconRanging({ region: TEST_REGION });
   const monitoring = useBeaconMonitoring({ region: TEST_REGION });
   const {
@@ -33,6 +35,14 @@ export default function TestScreen() {
 
   useEffect(() => {
     const ts = new Date().toISOString();
+
+    // Live-update the foreground service notification text with a beacon
+    // count instead of the static "Scanning for beacons..." string. No-op if
+    // foregroundService isn't enabled.
+    Beacon.updateNotification({
+      text: formatNotificationText(ranging.beacons.length),
+    });
+
     if (ranging.beacons.length === 0) {
       console.log(`[beacon] ${ts} — scan fired, 0 beacons`);
       return;
@@ -45,6 +55,18 @@ export default function TestScreen() {
       );
     });
   }, [ranging.beacons]);
+
+  // Fires after the user taps "Stop" on the foreground service notification
+  // (showStopAction: true, set in beaconSetup.ts). By the time this fires,
+  // the native side has already stopped ranging/monitoring and the
+  // foreground service — this is just for reflecting it in the UI.
+  useEffect(() => {
+    const subscription = Beacon.onForegroundServiceStopPressed(() => {
+      console.log('[beacon] scanning stopped from the notification');
+      setStoppedFromNotification(true);
+    });
+    return () => subscription.remove();
+  }, []);
 
   useEffect(() => {
     if (monitoring.regionState === 'unknown') return;
@@ -59,6 +81,7 @@ export default function TestScreen() {
   const handleStartRanging = useCallback(async () => {
     ranging.clearError();
     monitoring.clearError();
+    setStoppedFromNotification(false);
     try {
       await ranging.start();
     } catch (e: unknown) {
@@ -197,6 +220,11 @@ export default function TestScreen() {
 
       {/* --- Ranging --- */}
       <Text style={styles.sectionTitle}>Ranging</Text>
+      <Text style={styles.hint}>
+        The foreground service notification (Android) shows a live beacon count
+        and a "Stop Scanning" action button — see beaconSetup.ts and the effects
+        at the top of this screen.
+      </Text>
       <View style={styles.row}>
         <Button
           title={ranging.isActive ? 'Stop Ranging' : 'Start Ranging'}
@@ -204,6 +232,11 @@ export default function TestScreen() {
           disabled={ranging.isStarting || ranging.isStopping}
         />
       </View>
+      {stoppedFromNotification ? (
+        <Text style={styles.status}>
+          Stopped from the notification's "Stop Scanning" button.
+        </Text>
+      ) : null}
 
       {/* --- Monitoring --- */}
       <Text style={styles.sectionTitle}>Monitoring</Text>

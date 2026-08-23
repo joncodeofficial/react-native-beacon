@@ -43,11 +43,15 @@ building as-is, not raw demand for it.
   without extra complexity, and there's no real need to scan beacons in the
   ~10s before a worker unlocks their phone.
 
-- [ ] **Enhanced foreground-service notification** (channel, icon, color,
+- [x] **Enhanced foreground-service notification** (channel, icon, color,
   actions, dynamic text update) — **6/10**
   Backward-compatible UX polish for any app using `foregroundService: true`,
   not niche to one use case. Action buttons need a PendingIntent → JS event
   round-trip — moderate native work, well-trodden pattern.
+  Shipped: `foregroundServiceNotification.color/showStopAction/stopActionText`,
+  a fixed default notification icon, `Beacon.updateNotification()` for live
+  text/title updates, and `Beacon.onForegroundServiceStopPressed()` fired
+  after the native side stops all active regions and the foreground service.
 
 - [ ] **Motion-adaptive scan duty cycling (research spike)** — **6/10**
   Lower scan frequency (never to zero) when stationary *and* no beacon

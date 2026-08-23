@@ -35,7 +35,27 @@ export interface KalmanConfig {
 export interface ForegroundServiceNotificationConfig {
   title?: string;
   text?: string;
+  /** Notification accent color, e.g. `"#4F46E5"`. Android only. */
+  color?: string;
+  /**
+   * Adds a "Stop" action button to the notification. Tapping it stops all
+   * active ranging/monitoring regions and the foreground service, then fires
+   * `onForegroundServiceStopPressed`. Default: false. Android only.
+   */
+  showStopAction?: boolean;
+  /** Label for the stop action button. Default: "Stop". */
+  stopActionText?: string;
 }
+
+/**
+ * Live update for the foreground service notification's title/text, e.g. to
+ * show a beacon count instead of a static "Scanning for beacons..." string.
+ * No-op if the foreground service isn't currently enabled. Android only.
+ */
+export type UpdateNotificationConfig = Pick<
+  ForegroundServiceNotificationConfig,
+  'title' | 'text'
+>;
 
 export interface BeaconScanConfig {
   /** Scan period while the screen is on, in ms. Minimum: 1100ms. Default: 10000ms. */
@@ -139,6 +159,14 @@ export interface BeaconFailureEvent {
 // Keep one payload shape for both snapshot reads and live updates so apps can
 // render diagnostics UI without maintaining separate types.
 export type ScannerStateChangedEvent = BeaconEnvironmentState;
+
+/**
+ * Fired after the user taps the "Stop" action on the foreground service
+ * notification (`foregroundServiceNotification.showStopAction: true`) and
+ * the native side has already stopped all active ranging/monitoring regions
+ * and the foreground service itself. Android only.
+ */
+export type ForegroundServiceStopPressedEvent = Readonly<{}>;
 
 // ─── Hook types ──────────────────────────────────────────────────────────────
 

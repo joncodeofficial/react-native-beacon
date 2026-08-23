@@ -122,7 +122,7 @@ class BeaconModule(reactContext: ReactApplicationContext) :
           val pm = reactApplicationContext.getSystemService(PowerManager::class.java)
           wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "beacon-kit:scanning")
         }
-        foregroundService.enable(manager, notifConfig, aggressiveMode, wakeLock)
+        foregroundService.enable(manager, notifConfig, aggressiveMode, wakeLock) { stopFromNotification() }
         if (aggressiveMode) registerScreenReceiver()
       } else {
         foregroundService.disable(wakeLock)
@@ -246,6 +246,8 @@ class BeaconModule(reactContext: ReactApplicationContext) :
     promise.resolve(array)
   }
 
+  override fun updateNotification(config: ReadableMap) = foregroundService.update(config)
+
   // ─── Battery / OEM ───────────────────────────────────────────────────────
 
   override fun isIgnoringBatteryOptimizations(promise: Promise) {
@@ -292,6 +294,26 @@ class BeaconModule(reactContext: ReactApplicationContext) :
     monitorNotifier = null
     wakeLock?.let { if (it.isHeld) it.release() }
     super.invalidate()
+  }
+
+  // ─── Notification stop action ───────────────────────────────────────────
+
+  // Invoked when the user taps "Stop" on the foreground service notification.
+  // Mirrors what configure({ foregroundService: false }) plus stopping every
+  // active region would do, then tells JS it happened.
+  private fun stopFromNotification() {
+    val manager = beaconManager
+    if (manager != null) {
+      for (region in activeRangingRegions) { try { manager.stopRangingBeacons(region) } catch (_: Exception) {} }
+      for (region in activeMonitoringRegions) { try { manager.stopMonitoring(region) } catch (_: Exception) {} }
+    }
+    activeRangingRegions.clear()
+    activeMonitoringRegions.clear()
+    stopWatchdog()
+    foregroundService.disable(wakeLock)
+    wakeLock = null
+    unregisterScreenReceiver()
+    sendEvent("onForegroundServiceStopPressed", Arguments.createMap())
   }
 
   // ─── Aggressive background ───────────────────────────────────────────────

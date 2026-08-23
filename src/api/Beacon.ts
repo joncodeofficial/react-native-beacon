@@ -9,8 +9,10 @@ import type {
   BeaconScanConfig,
   EddystoneRangedEvent,
   EddystoneRegion,
+  ForegroundServiceStopPressedEvent,
   RegionStateChangedEvent,
   ScannerStateChangedEvent,
+  UpdateNotificationConfig,
 } from '../types';
 
 const emitter = new NativeEventEmitter(NativeBeacon);
@@ -105,6 +107,10 @@ const Beacon = {
     hasConfigured = true;
   },
 
+  updateNotification(config: UpdateNotificationConfig): void {
+    NativeBeacon.updateNotification(config);
+  },
+
   startRanging(region: BeaconRegion | EddystoneRegion): Promise<void> {
     return NativeBeacon.startRanging(toWireRegion(region));
   },
@@ -191,6 +197,15 @@ const Beacon = {
     return emitter.addListener(
       'onEddystoneRanged',
       wireCallback as (...args: readonly unknown[]) => unknown
+    );
+  },
+
+  onForegroundServiceStopPressed(
+    callback: (event: ForegroundServiceStopPressedEvent) => void
+  ) {
+    return emitter.addListener(
+      'onForegroundServiceStopPressed',
+      callback as (...args: readonly unknown[]) => unknown
     );
   },
 };

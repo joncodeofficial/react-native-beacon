@@ -331,6 +331,9 @@
 // No-op on iOS — no OEM autostart/power manager settings screen.
 - (void)openAutostartSettings:(NSString *)packageName className:(NSString *)className {}
 
+// No-op on iOS — the foreground service notification is Android-only.
+- (void)updateNotification:(NSDictionary *)config {}
+
 // ---------------------------------------------------------------------------
 // NativeEventEmitter — delegate to RCTEventEmitter superclass
 // ---------------------------------------------------------------------------

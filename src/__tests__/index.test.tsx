@@ -15,6 +15,9 @@ type MockNativeModule = {
   checkPermissions: jest.Mock<() => Promise<boolean>>;
   getEnvironmentState: jest.Mock<() => Promise<BeaconEnvironmentState>>;
   configure: jest.Mock<(config: BeaconScanConfig) => void>;
+  updateNotification: jest.Mock<
+    (config: { title?: string; text?: string }) => void
+  >;
   startRanging: jest.Mock<(region: BeaconRegion) => Promise<void>>;
   stopRanging: jest.Mock<(region: BeaconRegion) => Promise<void>>;
   startMonitoring: jest.Mock<(region: BeaconRegion) => Promise<void>>;
@@ -45,6 +48,8 @@ const createMockNativeModule = (): MockNativeModule => ({
   checkPermissions: jest.fn<() => Promise<boolean>>(),
   getEnvironmentState: jest.fn<() => Promise<BeaconEnvironmentState>>(),
   configure: jest.fn<(config: BeaconScanConfig) => void>(),
+  updateNotification:
+    jest.fn<(config: { title?: string; text?: string }) => void>(),
   startRanging: jest.fn<(region: BeaconRegion) => Promise<void>>(),
   stopRanging: jest.fn<(region: BeaconRegion) => Promise<void>>(),
   startMonitoring: jest.fn<(region: BeaconRegion) => Promise<void>>(),
@@ -300,6 +305,18 @@ describe('Beacon', () => {
     });
   });
 
+  describe('updateNotification', () => {
+    it('delegates to the native module unchanged', () => {
+      const mockNativeModule = getMockNativeModule();
+
+      Beacon.updateNotification({ text: '3 beacons nearby' });
+
+      expect(mockNativeModule.updateNotification).toHaveBeenCalledWith({
+        text: '3 beacons nearby',
+      });
+    });
+  });
+
   // `namespace` is reserved in Objective-C++, so the wire format between JS and
   // native uses `eddystoneNamespace` while the public API keeps `namespace`
   // (see src/api/Beacon.ts). These tests guard that translation.
@@ -519,6 +536,25 @@ describe('Beacon', () => {
         ...event,
         bluetoothEnabled: true,
       });
+
+      expect(callback).toHaveBeenCalledTimes(1);
+      expect(mockNativeModule.removeListeners).toHaveBeenCalledWith(1);
+    });
+
+    it('delivers foreground service stop-pressed events through the public subscription API', () => {
+      const mockNativeModule = getMockNativeModule();
+      const callback = jest.fn<(event: Readonly<{}>) => void>();
+
+      const subscription = Beacon.onForegroundServiceStopPressed(callback);
+      emitMockEvent('onForegroundServiceStopPressed', {});
+
+      expect(callback).toHaveBeenCalledWith({});
+      expect(mockNativeModule.addListener).toHaveBeenCalledWith(
+        'onForegroundServiceStopPressed'
+      );
+
+      subscription.remove();
+      emitMockEvent('onForegroundServiceStopPressed', {});
 
       expect(callback).toHaveBeenCalledTimes(1);
       expect(mockNativeModule.removeListeners).toHaveBeenCalledWith(1);

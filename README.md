@@ -568,6 +568,9 @@ Beacon.configure({
   foregroundServiceNotification?: {
     title?: string,
     text?: string,
+    color?: string,         // e.g. "#4F46E5"
+    showStopAction?: boolean, // adds a "Stop" button to the notification
+    stopActionText?: string,  // default: "Stop"
   },
   kalmanFilter?: {
     enabled: boolean,
@@ -616,6 +619,16 @@ const state = await Beacon.getEnvironmentState();
 // }
 ```
 
+#### `Beacon.updateNotification({ title?, text? })`
+
+Live-updates the foreground service notification's title/text — e.g. swap the
+static `"Scanning for beacons..."` string for a live count. No-op if the
+foreground service isn't currently enabled. Android only.
+
+```ts
+Beacon.updateNotification({ text: `${beacons.length} beacons nearby` });
+```
+
 #### `Beacon.startRanging(region)` / `Beacon.stopRanging(region)`
 
 Starts or stops nearby beacon ranging with RSSI and distance.
@@ -632,6 +645,7 @@ Starts or stops region entry and exit monitoring.
 - `Beacon.onRangingFailed(callback)`
 - `Beacon.onMonitoringFailed(callback)`
 - `Beacon.onScannerStateChanged(callback)`
+- `Beacon.onForegroundServiceStopPressed(callback)` — fired after the user taps "Stop" on the foreground service notification (`showStopAction: true`); all active ranging/monitoring regions and the foreground service are already stopped by the time this fires (Android only)
 
 For hook users, runtime failures are already exposed through each hook's `error` field.
 
