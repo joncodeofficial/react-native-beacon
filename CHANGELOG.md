@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.12.0](https://github.com/joncodeofficial/react-native-beacon-kit/compare/v0.11.1...v0.12.0) (2026-08-23)
+
+### Features
+
+* **android:** add stop action, live text updates, and color to the foreground service notification ([9e5b152](https://github.com/joncodeofficial/react-native-beacon-kit/commit/9e5b1524843a67440e470b6627fe3d140e6ddbd1))
+
+### Bug Fixes
+
+* **examples:** enable aggressiveBackground and drop generic example READMEs ([0371686](https://github.com/joncodeofficial/react-native-beacon-kit/commit/037168698b4eaeb2ff9a28372201ce8ca55176df))
+
 ## [0.11.1](https://github.com/joncodeofficial/react-native-beacon-kit/compare/v0.11.0...v0.11.1) (2026-07-15)
 
 ### Bug Fixes
