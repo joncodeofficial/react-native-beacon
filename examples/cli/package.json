@@ -28,7 +28,7 @@
     "@react-native/babel-preset": "0.83.9",
     "@react-native/metro-config": "0.83.9",
     "@react-native/typescript-config": "0.83.9",
-    "@types/react": "^19.2.15",
+    "@types/react": "^19.2.18",
     "@vitejs/plugin-react": "^5.2.0",
     "react-native-builder-bob": "^0.41.0",
     "react-native-monorepo-config": "^0.3.5",
