@@ -708,6 +708,12 @@ Beacon.configure({
 });
 ```
 
+What it does:
+
+- acquires a `PARTIAL_WAKE_LOCK` so the CPU stays awake for BLE callbacks with the screen off
+- forces `LOW_LATENCY` scan mode, preventing MIUI-class ROMs from silently downgrading to `LOW_POWER` on screen-off
+- runs a watchdog that restarts ranging every 20s, to beat MIUI's ~20s scan-suspend timer
+
 Tradeoff:
 
 - improves survivability on some OEMs
@@ -765,6 +771,13 @@ Beacon.openAutostartSettings(resolveOemAutostartTarget());
 > [!IMPORTANT]
 > Call `openAutostartSettings()` only from a user-initiated action, not during app startup.
 
+Autostart is often not the only OEM setting that matters. On MIUI/HyperOS specifically, background scanning can still be killed even with autostart enabled unless the user also sets, from the app's own system settings page:
+
+- **Battery saver** → No restrictions
+- **Other permissions** → set "Display pop-up windows while running in the background" and "Show on lock screen" to Always allow
+
+There's no stable API or deep link to these specific sub-screens across ROM versions — `openAutostartSettings()` only targets the autostart screen. Direct users to the app's general system settings page for the rest (calling it with no target, or letting the OEM lookup fail, already falls back there).
+
 ## Background wake-up
 
 When the OS kills your app and a beacon event brings it back, the JS bundle starts completely fresh — no React state, no in-memory store. You need to restore any context your app needs before handling the event.
@@ -810,7 +823,13 @@ Add `POST_NOTIFICATIONS` to your runtime permission flow.
 
 ### Scanning stops after screen off on Xiaomi / HyperOS
 
-Review [Advanced Android](#advanced-android). `foregroundService: true` may not be enough on some OEM devices.
+Review [Advanced Android](#advanced-android). `foregroundService: true` may not be enough on some OEM devices — try `aggressiveBackground: true` plus the manual settings in [OEM settings](#oem-settings).
+
+Even with everything configured, expect background detection to be noticeably less frequent than in the foreground on these ROMs — the OS is still throttling the radio, just less aggressively. For apps that need tight real-time precision, consider a screen-on "survey" flow instead of relying on continuous background scanning, and set expectations with users on these devices accordingly.
+
+### `MIUI PERMISSION DENIED` in Logcat on Xiaomi / HyperOS
+
+This is a system-level log from MIUI's own BLE throttling, not an error from this library — it doesn't necessarily block scanning outright, just some individual scan attempts. There's nothing to fix in your app; it can appear even after applying every mitigation in [OEM settings](#oem-settings).
 
 ## Migrating from react-native-beacons-manager
 
