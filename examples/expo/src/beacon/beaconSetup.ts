@@ -18,7 +18,11 @@ const DEFAULT_BEACON_CONFIG: BeaconScanConfig = {
     stopActionText: 'Stop Scanning',
   },
   kalmanFilter: { enabled: true },
-  aggressiveBackground: false,
+  // On by default in this example so background reliability on restrictive
+  // OEMs (Xiaomi/HyperOS, some Samsung/Huawei) can be exercised out of the
+  // box — most consuming apps should leave this off unless they've verified
+  // it's needed. See the README's "aggressiveBackground" section.
+  aggressiveBackground: true,
 };
 
 // Example app setup lives in one place so every screen can assume Beacon is
